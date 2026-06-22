@@ -1,0 +1,90 @@
+spring:
+  application:
+    name: smart-insurance-platform
+  datasource:
+    url: jdbc:h2:mem:insurance;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+    h2:
+      console:
+        enabled: true
+        path: /h2-console
+
+embabel:
+  models:
+    default-llm: deepseek-chat
+    llms:
+      fast: deepseek-chat
+      balanced: deepseek-chat
+      powerful: deepseek-reasoner
+      best: deepseek-reasoner
+
+  agent:
+    platform:
+      models:
+        deepseek:
+          api-key: ${DEEPSEEK_API_KEY}
+    agent-platform:
+      scanning:
+        annotation: true
+        bean: true
+  # ============================================================
+  # 可观测性配置（默认关闭，按需开启）
+  # 开启方式：将 enabled 改为 true，取消 management 段注释
+  # ============================================================
+  observability:
+    enabled: false
+    service-name: SmartInsurancePlatform
+
+insurance:
+  rag:
+    documents-path: classpath:documents/
+    documents: comprehensive_vehicle_insurance.md,claims_guide.md,faq.md
+    auto-ingest: true
+    lucene:
+      name: insurance-lucene
+      chunk-size: 1000
+      chunk-overlap: 200
+server:
+  port: 8080
+
+# ============================================================
+# 可观测性 — Management & Langfuse（默认注释，按需开启）
+# 使用方法：
+#   1. 取消下方整段注释
+#   2. 将 embabel.observability.enabled 改为 true
+#   3. 如需 Langfuse：启动本地服务或使用云版，设置环境变量
+#      export LANGFUSE_PUBLIC_KEY=pk-xxx
+#      export LANGFUSE_SECRET_KEY=sk-xxx
+# ============================================================
+#management:
+#  endpoints:
+#    web:
+#      exposure:
+#        include: prometheus,health,metrics
+#  prometheus:
+#    metrics:
+#      export:
+#        enabled: true
+#  tracing:
+#    enabled: true
+#    sampling:
+#      probability: 1.0
+#  langfuse:
+#    enabled: true
+#    endpoint: http://localhost:3000/api/public/otel
+#    public-key: ${LANGFUSE_PUBLIC_KEY}
+#    secret-key: ${LANGFUSE_SECRET_KEY}
+
+logging:
+  level:
+    com.embabel.insurance: DEBUG
+    com.embabel.agent: DEBUG

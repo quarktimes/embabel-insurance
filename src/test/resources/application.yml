@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: smart-insurance-platform-test
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+  h2:
+    console:
+      enabled: true
+
+embabel:
+  models:
+    default-llm: deepseek-chat
+    llms:
+      fast: deepseek-chat
+      balanced: deepseek-chat
+      powerful: deepseek-reasoner
+      best: deepseek-reasoner
+
+  agent:
+    platform:
+      models:
+        deepseek:
+          api-key: ${DEEPSEEK_API_KEY:sk-test-placeholder-for-integration-tests}
+          timeout: 120s
+          max-retries: 3
+          connect-timeout: 30s
+          read-timeout: 120s
+
+insurance:
+  rag:
+    documents-path: classpath:documents/
+    documents: comprehensive_vehicle_insurance.md,claims_guide.md,faq.md
+    auto-ingest: false
+    lucene:
+      name: insurance-lucene
+      chunk-size: 1000
+      chunk-overlap: 200
+    embedding:
+      enabled: false
+      model: text-embedding-3-small
+      base-url: https://api.deepseek.com/v1
+      api-key: ${DEEPSEEK_API_KEY:}
+      dimensions: 1536
+      vector-weight: 0.5
+
+server:
+  port: 0
+
+logging:
+  level:
+    com.embabel.insurance: DEBUG
+    com.embabel.agent: DEBUG
+    com.embabel: DEBUG
+    org.springframework.ai: WARN
