@@ -1,79 +1,79 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+本文档指导 Claude Code 在此仓库中的开发工作。
 
-## Build & Run
+## 构建与运行
 
 ```bash
-# Start the app (requires DEEPSEEK_API_KEY)
+# 启动应用（需要 DEEPSEEK_API_KEY）
 ./mvnw spring-boot:run
 
-# Run all tests
+# 运行全部测试
 ./mvnw test
 
-# Run a single test class
+# 运行单个测试类
 ./mvnw test -Dtest=UnderwritingAgentIntegrationTest
 
-# Run E2E tests (require DEEPSEEK_API_KEY)
+# 运行 E2E 测试（需要 DEEPSEEK_API_KEY）
 ./mvnw test -Pe2e
 
-# Skip integration tests (fast compile check)
+# 跳过集成测试（快速编译检查）
 ./mvnw test -Dtest='!integration.*,!e2e.*'
 ```
 
-**Env vars:** `DEEPSEEK_API_KEY` (required), `LANGFUSE_*` (optional observability).
+**环境变量：** `DEEPSEEK_API_KEY`（必需），`LANGFUSE_*`（可选的可观测性配置）。
 
-## Architecture (Three-Layer Agent System)
+## 架构概览（三层 Agent 系统）
 
 ```
 ┌─────────────────────────────────────────────┐
-│  REST Controllers                           │
+│  REST 控制器层                              │
 │  ChatController  InsuranceController        │
 ├─────────────────────────────────────────────┤
-│  Service Layer                              │
+│  服务层                                     │
 │  ChatService    AgentService   PolicyService│
 ├─────────────────────────────────────────────┤
-│  Embabel Agent Layer                        │
+│  Embabel Agent 层                           │
 │  ChatbotAgent   UnderwritingAgent  Claims   │
-│  (RAG/FAQ)      (核保+state routing)       │
-│               + Guardrails                  │
+│  (RAG/问答)     (核保+状态路由)             │
+│               + Guardrails（安全护栏）       │
 └─────────────────────────────────────────────┘
 ```
 
-### Directory Layout
+### 目录结构
 
-- **agent/** — Three `@Agent` classes, each with internal `@State` routing:
-  - `ChatbotAgent` — Agentic RAG (Lucene search → LLM answer), single-state QA
-  - `UnderwritingAgent` — Multi-state (APPROVED/REFERRED/DENIED/ERROR routing) with Utility planner
-  - `ClaimsAgent` — Multi-state (APPROVED/DENIED/INVESTIGATING/ERROR routing) with Utility planner
-- **service/** — `AgentService` orchestrates UnderwritingAgent/ClaimsAgent via AgentPlatform; `ChatService` manages server-side sessions + calls ChatbotAgent via AgentInvocation
-- **controller/** — REST endpoints (`/api/chat`, `/api/insurance/*`); all require HTTP Basic auth (`@PreAuthorize` for fine-grained access)
-- **guardrail/** — Embabel GuardRail implementations for input/output validation
-- **dto/** — `request/` and `response/` sub-packages for typed API contracts
-- **config/** — SecurityConfig, CacheConfig, RAG config, DataInitializer, OpenAPI, Guardrail wiring
+- **agent/** — 三个 `@Agent` 类，内部使用 `@State` 路由：
+  - `ChatbotAgent` — Agentic RAG（Lucene 搜索 → LLM 回答），单状态问答
+  - `UnderwritingAgent` — 多状态（APPROVED/REFERRED/DENIED/ERROR），Utility 规划器
+  - `ClaimsAgent` — 多状态（APPROVED/DENIED/INVESTIGATING/ERROR），Utility 规划器
+- **service/** — `AgentService` 通过 AgentPlatform 编排核保/理赔 Agent；`ChatService` 管理服务端会话 + 通过 AgentInvocation 调用 ChatbotAgent
+- **controller/** — REST 端点（`/api/chat`、`/api/insurance/*`），所有接口需要 HTTP Basic 认证（`@PreAuthorize` 实现细粒度权限控制）
+- **guardrail/** — Embabel GuardRail 实现，用于输入/输出内容安全校验
+- **dto/** — `request/` 和 `response/` 子包，结构化 API 请求响应契约
+- **config/** — SecurityConfig、CacheConfig、RAG 配置、DataInitializer、OpenAPI、Guardrail 装配
 
-### Testing Strategy
+### 测试策略
 
-| Test Type | Location | LLM Needed? | Profile |
-|-----------|----------|-------------|---------|
-| Unit tests | `agent/*Test.java`, `service/*Test.java` | No | default |
-| Integration | `integration/*IntegrationTest.java` | No (FakeOperationContext) | default |
-| E2E | `e2e/*E2ETest.java` | Yes (DeepSeek) | `e2e` |
+| 测试类型 | 位置 | 需要 LLM？ | Profile |
+|---------|------|-----------|---------|
+| 单元测试 | `agent/*Test.java`、`service/*Test.java` | 否 | default |
+| 集成测试 | `integration/*IntegrationTest.java` | 否（FakeOperationContext 模拟 LLM） | default |
+| E2E 测试 | `e2e/*E2ETest.java` | 是（DeepSeek） | `e2e` |
 
-Integration tests use Embabel `FakeOperationContext` to mock LLM responses — they exercise the full Agent state machine without API calls.
+集成测试使用 Embabel 的 `FakeOperationContext` 来模拟 LLM 响应，无需真实 API 调用即可覆盖完整的 Agent 状态机流程。
 
-### Key Patterns
+### 关键模式
 
-1. **Agent State Routing** — Agents use `@State(name = "APPROVED")` + `@Action` annotations. The Utility planner routes between states based on risk scores / fraud scores.
+1. **Agent 状态路由** — Agent 使用 `@State(name = "APPROVED")` + `@Action` 注解标记状态和动作。Utility 规划器根据风险评分/欺诈评分在状态间路由。
 
-2. **Error Handling via Blackboard** — Agent errors are stored on `Blackboard` with keys like `underwriting_error`, `claims_error`, rather than thrown as exceptions. `AgentService` reads these after agent completion.
+2. **Blackboard 错误处理** — Agent 错误存储在 `Blackboard` 上（键如 `underwriting_error`、`claims_error`），而非抛出异常。`AgentService` 在 Agent 完成后读取这些值。
 
-3. **Agent Timeout Protection** — All agent invocations via `runWithTimeout()` (120s default); stuck agents trigger `StuckHandler` callback with diagnostics.
+3. **Agent 超时保护** — 所有 Agent 调用通过 `runWithTimeout()`（默认 120s）保护；超时时触发 `StuckHandler` 回调输出诊断信息。
 
-4. **Chat Session Management** — `ChatService` manages sessions per userId in-memory with 30min TTL; clients receive a `sessionId` on first message and pass it back.
+4. **聊天会话管理** — `ChatService` 按 userId 在内存中管理会话，30 分钟 TTL；客户端首次发送消息时获得 `sessionId`，后续调用带回该 ID。
 
-5. **Role-Based Auth** — Four roles with hierarchical permissions: ADMIN > (UNDERWRITER, CLAIMS) > USER. Method-level `@PreAuthorize` gates all insurance endpoints.
+5. **角色权限体系** — 四个角色：ADMIN > (UNDERWRITER, CLAIMS) > USER，支持层级权限。保险核心接口通过 `@PreAuthorize` 注解控制访问。
 
-### Intent Routing (Phase 1 Target)
+### Phase 1 — 意图路由目标
 
-The current `ChatController` routes all messages to `ChatbotAgent` (AI FAQ). Phase 1 work will add intent classification so messages about underwriting/claims/payment route to the appropriate Agent or Service instead.
+当前 `ChatController` 将所有消息路由到 `ChatbotAgent`（AI 客服问答）。Phase 1 将增加意图分类功能，使核保、理赔、支付等业务消息能路由到对应的 Agent 或 Service。

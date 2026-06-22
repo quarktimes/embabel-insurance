@@ -1,0 +1,243 @@
+package com.embabel.insurance.service;
+
+import com.embabel.insurance.assistant.Intent;
+import com.embabel.insurance.assistant.IntentClassifier;
+import com.embabel.insurance.dto.response.AssistantResponse;
+import com.embabel.insurance.dto.response.PolicyResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * 统一助手服务，接收用户自然语言输入，进行意图分类并路由到对应的 Agent 或 Service。
+ *
+ * <p>职责链路：</br>
+ * 用户输入 → {@link IntentClassifier#classify(String)} → 路由到对应处理器 → 结构化响应
+ *
+ * <p>会话管理：按 userId 在内存中管理会话，30 分钟 TTL。
+ */
+@Service
+public class AssistantService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AssistantService.class);
+
+    /** 会话超时时间（秒） */
+    private static final long SESSION_TTL_SECONDS = 30 * 60;
+
+    /** 会话存储：userId → (sessionId → SessionRecord) */
+    private final Map<String, Map<String, SessionRecord>> sessions = new ConcurrentHashMap<>();
+
+    private final IntentClassifier intentClassifier;
+    private final AgentService agentService;
+    private final ChatService chatService;
+    private final PolicyService policyService;
+
+    public AssistantService(IntentClassifier intentClassifier,
+                            AgentService agentService,
+                            ChatService chatService,
+                            PolicyService policyService) {
+        this.intentClassifier = intentClassifier;
+        this.agentService = agentService;
+        this.chatService = chatService;
+        this.policyService = policyService;
+    }
+
+    /**
+     * 处理用户消息：意图分类 → 路由 → 返回结构化响应。
+     *
+     * @param userId   认证用户 ID
+     * @param message  用户输入
+     * @param sessionId 可选会话 ID，延续已有对话
+     * @return 统一结构化响应
+     */
+    public AssistantResponse handleMessage(String userId, String message, String sessionId) {
+        // 1. 解析或创建会话
+        boolean isNewSession = false;
+        SessionRecord session = resolveSession(userId, sessionId);
+        if (session == null) {
+            session = createSession(userId);
+            isNewSession = true;
+        } else {
+            session.touch();
+        }
+
+        // 2. 意图分类
+        Intent intent = intentClassifier.classify(message);
+        logger.info("Assistant: userId={}, intent={}, message={}", userId, intent, truncate(message, 60));
+
+        // 3. 路由
+        try {
+            return switch (intent) {
+                case UNDERWRITING -> handleUnderwriting(userId, message, session);
+                case CLAIMS -> handleClaims(message, session);
+                case POLICY_QUERY -> handlePolicyQuery(userId, session);
+                case CHAT -> handleChat(userId, message, session, isNewSession);
+            };
+        } catch (Exception e) {
+            logger.error("Error handling {} intent for user {}", intent, userId, e);
+            return AssistantResponse.error(
+                    session.id,
+                    "抱歉，处理您的问题时遇到错误：" + e.getMessage()
+            );
+        }
+    }
+
+    /**
+     * 清除会话。
+     */
+    public void clearSession(String userId, String sessionId) {
+        Map<String, SessionRecord> userSessions = sessions.get(userId);
+        if (userSessions != null) {
+            userSessions.remove(sessionId);
+        }
+    }
+
+    // ════════════════════════════════════════════
+    //  路由处理器
+    // ════════════════════════════════════════════
+
+    private AssistantResponse handleUnderwriting(String userId, String message, SessionRecord session) {
+        // 调用 AgentService 执行核保
+        var uwResponse = agentService.processUnderwriting(userId, message);
+
+        // 构建结构化 data
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("quoteId", uwResponse.getQuoteId());
+        data.put("status", uwResponse.getStatus());
+        data.put("riskScore", uwResponse.getRiskScore());
+        data.put("premiumAmount", uwResponse.getPremiumAmount());
+
+        // 构建操作按钮
+        List<AssistantResponse.Action> actions = new ArrayList<>();
+        if ("APPROVED".equals(uwResponse.getStatus()) && uwResponse.getQuoteId() != null) {
+            actions.add(new AssistantResponse.Action(
+                    "💳 立即支付（¥" + String.format("%.0f", uwResponse.getPremiumAmount()) + "）",
+                    "pay",
+                    Map.of("quoteId", uwResponse.getQuoteId())
+            ));
+            actions.add(new AssistantResponse.Action("📋 查看详情", "view_details",
+                    Map.of("quoteId", uwResponse.getQuoteId())));
+        } else if ("REFERRED".equals(uwResponse.getStatus())) {
+            actions.add(new AssistantResponse.Action("等待核保员审批", "wait_approval", Map.of()));
+        }
+
+        // 文本消息供打字机展示
+        String text = uwResponse.getMessage() != null ? uwResponse.getMessage()
+                : "核保结果：" + uwResponse.getStatus();
+
+        return AssistantResponse.underwritingResult(session.id, text, data, actions);
+    }
+
+    private AssistantResponse handleClaims(String message, SessionRecord session) {
+        // 从消息中提取键值对格式，或直接转发给 AgentService
+        var claimResult = agentService.processClaim(message);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("claimNumber", claimResult.claimNumber());
+        data.put("status", claimResult.claimStatus());
+        data.put("fraudScore", claimResult.fraudScore());
+        data.put("approvedAmount", claimResult.approvedAmount());
+
+        String text = claimResult.message() != null && !claimResult.message().isBlank()
+                ? claimResult.message()
+                : "理赔结果：" + claimResult.claimStatus();
+
+        return AssistantResponse.claimResult(session.id, text, data, List.of());
+    }
+
+    private AssistantResponse handlePolicyQuery(String userId, SessionRecord session) {
+        List<PolicyResponse> policies = policyService.getPoliciesByUserId(userId);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("total", policies.size());
+        data.put("policies", policies.stream()
+                .map(p -> Map.of(
+                        "policyNumber", p.getPolicyNumber(),
+                        "vehicle", p.getVehicleBrand() + " " + p.getVehicleModel(),
+                        "premium", p.getPremiumAmount(),
+                        "status", p.getStatus(),
+                        "effectiveDate", p.getEffectiveDate() != null ? p.getEffectiveDate().toString() : null,
+                        "expirationDate", p.getExpirationDate() != null ? p.getExpirationDate().toString() : null
+                ))
+                .toList());
+
+        String text;
+        if (policies.isEmpty()) {
+            text = "您目前没有有效的保单。";
+        } else {
+            text = "您共有 " + policies.size() + " 份保单：\n";
+            for (PolicyResponse p : policies) {
+                text += "- " + p.getPolicyNumber()
+                        + " | " + p.getVehicleBrand() + " " + p.getVehicleModel()
+                        + " | 保费 ¥" + String.format("%.0f", p.getPremiumAmount())
+                        + " | " + p.getStatus()
+                        + (p.getExpirationDate() != null ? " | 到期 " + p.getExpirationDate().toLocalDate() : "")
+                        + "\n";
+            }
+        }
+
+        return AssistantResponse.policyList(session.id, text, data);
+    }
+
+    private AssistantResponse handleChat(String userId, String message, SessionRecord session, boolean isNewSession) {
+        // 复用现有 ChatService 的会话机制
+        var chatResponse = chatService.processChat(userId, message,
+                isNewSession ? null : session.id);
+
+        String sessionId = chatResponse.getSessionId();
+        if (sessionId != null) {
+            session.id = sessionId;  // 同步 ChatService 返回的 sessionId
+        }
+
+        return AssistantResponse.chat(session.id, false, chatResponse.getResponse());
+    }
+
+    // ════════════════════════════════════════════
+    //  会话管理
+    // ════════════════════════════════════════════
+
+    private SessionRecord resolveSession(String userId, String sessionId) {
+        if (sessionId == null || sessionId.isBlank()) return null;
+        Map<String, SessionRecord> userSessions = sessions.get(userId);
+        if (userSessions == null) return null;
+        SessionRecord record = userSessions.get(sessionId);
+        if (record == null) return null;
+        if (record.isExpired()) {
+            userSessions.remove(sessionId);
+            return null;
+        }
+        return record;
+    }
+
+    private SessionRecord createSession(String userId) {
+        String newId = UUID.randomUUID().toString();
+        SessionRecord record = new SessionRecord(newId);
+        sessions.computeIfAbsent(userId, k -> new ConcurrentHashMap<>()).put(newId, record);
+        return record;
+    }
+
+    /** 简化截断 */
+    private static String truncate(String s, int max) {
+        return s != null && s.length() > max ? s.substring(0, max) + "..." : s;
+    }
+
+    private static class SessionRecord {
+        String id;
+        volatile Instant lastAccess;
+
+        SessionRecord(String id) {
+            this.id = id;
+            this.lastAccess = Instant.now();
+        }
+
+        void touch() { this.lastAccess = Instant.now(); }
+
+        boolean isExpired() {
+            return Instant.now().isAfter(lastAccess.plusSeconds(SESSION_TTL_SECONDS));
+        }
+    }
+}

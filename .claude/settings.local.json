@@ -49,7 +49,18 @@
       "Bash(grep -rn \"com\\\\.example\\\\.embabel\" /Users/dehualiu/Documents/project/aiproject/embabel-insurance/ --include=\"*.java\" --include=\"*.xml\" --include=\"*.yml\" --include=\"*.yaml\" --include=\"*.properties\" --include=\"*.md\" ! -path \"*/target/*\" ! -path \"*/.claude/*\")",
       "Bash(sed -i '' 's/com\\\\.example\\\\.embabel/com.embabel.insurance/g' /Users/dehualiu/Documents/project/aiproject/embabel-insurance/.idea/workspace.xml)",
       "Bash(sed -i '' 's/embabel-java-agent-tutorial/embabel-insurance/g' /Users/dehualiu/Documents/project/aiproject/embabel-insurance/.idea/workspace.xml)",
-      "Bash(gh auth *)"
+      "Bash(gh auth *)",
+      "Bash(git commit -m 'refactor: rename base package to com.embabel.insurance *)",
+      "Bash(gh repo *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'docs: add CLAUDE.md for project context *)",
+      "Bash(git push *)",
+      "Bash(npm --version)",
+      "Bash(java --version)",
+      "Bash(./mvnw compile *)",
+      "Bash(./mvnw test *)",
+      "Bash(git checkout *)",
+      "Bash(git commit -m 'feat: Phase 1 — intent-based routing assistant with chat UI *)"
     ]
   }
 }

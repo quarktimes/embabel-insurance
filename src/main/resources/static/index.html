@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能保险助手</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .chat-container {
+            width: 480px;
+            height: 700px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .chat-header {
+            background: #1677ff;
+            color: white;
+            padding: 16px 20px;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .chat-header small {
+            font-size: 12px;
+            font-weight: 400;
+            opacity: 0.85;
+            margin-left: auto;
+        }
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .message {
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            line-height: 1.6;
+            font-size: 14px;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .message.user {
+            background: #1677ff;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        .message.assistant {
+            background: #f0f0f0;
+            color: #1f1f1f;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        .message.assistant .text {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .message.error {
+            background: #fff2f0;
+            color: #cf1322;
+            border: 1px solid #ffccc7;
+            align-self: flex-start;
+        }
+        .typing .cursor {
+            display: inline-block;
+            width: 6px;
+            height: 16px;
+            background: #1677ff;
+            margin-left: 2px;
+            animation: blink 0.8s step-end infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .action-btn {
+            background: white;
+            border: 1px solid #1677ff;
+            color: #1677ff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .action-btn:hover {
+            background: #1677ff;
+            color: white;
+        }
+        .message.assistant .action-btn {
+            background: #e6f4ff;
+        }
+        .message.assistant .action-btn:hover {
+            background: #1677ff;
+            color: white;
+        }
+        .badge {
+            display: inline-block;
+            font-size: 11px;
+            padding: 1px 8px;
+            border-radius: 10px;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        .badge.underwriting { background: #f6ffed; color: #389e0d; }
+        .badge.claims { background: #fff7e6; color: #d46b08; }
+        .badge.policy { background: #e6f7ff; color: #096dd9; }
+        .badge.chat { background: #f9f0ff; color: #722ed1; }
+        .badge.error { background: #fff2f0; color: #cf1322; }
+
+        .tag-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .input-area {
+            border-top: 1px solid #e8e8e8;
+            padding: 12px 16px;
+            display: flex;
+            gap: 8px;
+            background: white;
+        }
+        .input-area input {
+            flex: 1;
+            border: 1px solid #d9d9d9;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 14px;
+            outline: none;
+            transition: border 0.2s;
+        }
+        .input-area input:focus { border-color: #1677ff; box-shadow: 0 0 0 2px rgba(22,119,255,0.1); }
+        .input-area button {
+            background: #1677ff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .input-area button:hover { background: #4096ff; }
+        .input-area button:disabled { background: #d9d9d9; cursor: not-allowed; }
+        .input-area button.loading::after {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid white;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .suggestions {
+            padding: 8px 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .suggestion-chip {
+            background: #f5f5f5;
+            border: 1px solid #e8e8e8;
+            border-radius: 14px;
+            padding: 4px 12px;
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .suggestion-chip:hover {
+            background: #e6f4ff;
+            border-color: #1677ff;
+            color: #1677ff;
+        }
+        .status-bar {
+            padding: 4px 16px;
+            font-size: 11px;
+            color: #999;
+            text-align: center;
+            border-top: 1px solid #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+<div class="chat-container">
+    <div class="chat-header">
+        🤖 智能保险助手
+        <small>Phase 1</small>
+    </div>
+
+    <div class="suggestions" id="suggestions"></div>
+
+    <div class="messages" id="messages">
+        <div class="message assistant">
+            <div class="text">您好！我是智能保险助手。可以帮您：<br>
+            • 🚗 车险核保报价<br>
+            • 📋 理赔申请<br>
+            • 📄 保单查询<br>
+            • 💬 保险知识问答<br><br>
+            请用自然语言告诉我您需要什么帮助。</div>
+        </div>
+    </div>
+
+    <div class="input-area">
+        <input type="text" id="input" placeholder="输入您的问题..." autofocus>
+        <button id="sendBtn">发送</button>
+    </div>
+    <div class="status-bar" id="status"></div>
+</div>
+
+<script>
+const messagesEl = document.getElementById('messages');
+const inputEl = document.getElementById('input');
+const sendBtn = document.getElementById('sendBtn');
+const statusEl = document.getElementById('status');
+const suggestionsEl = document.getElementById('suggestions');
+
+let sessionId = null;
+let isLoading = false;
+
+// 建议问题
+const SUGGESTIONS = [
+    { text: '🚗 我要给丰田RAV4投保', intent: 'underwriting' },
+    { text: '📋 我要理赔', intent: 'claims' },
+    { text: '📄 我的保单', intent: 'policy' },
+    { text: '💬 综合险是什么？', intent: 'chat' },
+];
+
+// 渲染建议
+function renderSuggestions() {
+    suggestionsEl.innerHTML = SUGGESTIONS.map(s =>
+        `<span class="suggestion-chip" onclick="sendMessage('${s.text.replace(/'/g, "\\'")}')">${s.text}</span>`
+    ).join('');
+}
+renderSuggestions();
+
+// 添加消息
+function addMessage(role, content, type) {
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+
+    if (role === 'assistant') {
+        const badge = document.createElement('div');
+        badge.className = `badge ${type || 'chat'}`;
+        badge.textContent = typeLabel(type);
+        div.appendChild(badge);
+    }
+
+    const textDiv = document.createElement('div');
+    textDiv.className = 'text';
+    textDiv.textContent = content;
+    div.appendChild(textDiv);
+
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return div;
+}
+
+function typeLabel(type) {
+    const labels = {
+        'chat': '💬 客服问答',
+        'underwriting_result': '🚗 核保',
+        'claim_result': '📋 理赔',
+        'policy_list': '📄 保单',
+        'error': '⚠️ 错误',
+    };
+    return labels[type] || type || '💬 客服问答';
+}
+
+// 渲染操作按钮
+function addActions(msgEl, actions) {
+    if (!actions || actions.length === 0) return;
+    const container = document.createElement('div');
+    container.className = 'action-buttons';
+    actions.forEach(a => {
+        const btn = document.createElement('button');
+        btn.className = 'action-btn';
+        btn.textContent = a.label;
+        btn.onclick = () => {
+            if (a.action === 'pay') {
+                sendMessage(`支付 quoteId=${a.payload?.quoteId}`);
+            } else {
+                sendMessage(`查看 ${a.action}`);
+            }
+        };
+        container.appendChild(btn);
+    });
+    msgEl.appendChild(container);
+}
+
+// 打字机效果
+function typeMessage(role, fullText, type, actions, callback) {
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+
+    if (role === 'assistant') {
+        const badge = document.createElement('div');
+        badge.className = `badge ${type || 'chat'}`;
+        badge.textContent = typeLabel(type);
+        div.appendChild(badge);
+    }
+
+    const textDiv = document.createElement('div');
+    textDiv.className = 'text typing';
+    textDiv.textContent = '';
+    div.appendChild(textDiv);
+    messagesEl.appendChild(div);
+
+    let idx = 0;
+    const cursor = document.createElement('span');
+    cursor.className = 'cursor';
+    textDiv.appendChild(cursor);
+
+    const interval = setInterval(() => {
+        if (idx < fullText.length) {
+            textDiv.textContent = fullText.substring(0, idx + 1);
+            textDiv.appendChild(cursor);
+            idx++;
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        } else {
+            clearInterval(interval);
+            textDiv.classList.remove('typing');
+            textDiv.textContent = fullText;
+            if (actions) addActions(div, actions);
+            if (callback) callback();
+        }
+    }, 20);
+    return div;
+}
+
+// 发送消息
+function sendMessage(text) {
+    if (!text) text = inputEl.value.trim();
+    if (!text || isLoading) return;
+
+    inputEl.value = '';
+    isLoading = true;
+    sendBtn.disabled = true;
+    sendBtn.classList.add('loading');
+    statusEl.textContent = '🤔 思考中...';
+
+    addMessage('user', text);
+
+    const body = { message: text };
+    const url = sessionId
+        ? `/api/assistant?sessionId=${encodeURIComponent(sessionId)}`
+        : '/api/assistant';
+
+    fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.sessionId) sessionId = data.sessionId;
+        typeMessage('assistant', data.text || '(无响应)', data.type, data.actions, () => {
+            statusEl.textContent = '';
+        });
+    })
+    .catch(err => {
+        addMessage('error', '请求失败: ' + err.message);
+        statusEl.textContent = '';
+    })
+    .finally(() => {
+        isLoading = false;
+        sendBtn.disabled = false;
+        sendBtn.classList.remove('loading');
+        inputEl.focus();
+    });
+}
+
+// 事件绑定
+sendBtn.addEventListener('click', () => sendMessage());
+inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
+
+// 回车收起建议
+inputEl.addEventListener('focus', () => suggestionsEl.style.display = 'none');
+inputEl.addEventListener('blur', () => setTimeout(() => { if (!inputEl.value) suggestionsEl.style.display = 'flex'; }, 200));
+</script>
+</body>
+</html>
