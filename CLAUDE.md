@@ -42,12 +42,13 @@
 
 ### 目录结构
 
+- **assistant/** — Phase 1 新增：`IntentClassifier`（关键词意图分类）和 `Intent` 枚举
 - **agent/** — 三个 `@Agent` 类，内部使用 `@State` 路由：
   - `ChatbotAgent` — Agentic RAG（Lucene 搜索 → LLM 回答），单状态问答
   - `UnderwritingAgent` — 多状态（APPROVED/REFERRED/DENIED/ERROR），Utility 规划器
   - `ClaimsAgent` — 多状态（APPROVED/DENIED/INVESTIGATING/ERROR），Utility 规划器
 - **service/** — `AgentService` 通过 AgentPlatform 编排核保/理赔 Agent；`ChatService` 管理服务端会话 + 通过 AgentInvocation 调用 ChatbotAgent
-- **controller/** — REST 端点（`/api/chat`、`/api/insurance/*`），所有接口需要 HTTP Basic 认证（`@PreAuthorize` 实现细粒度权限控制）
+- **controller/** — REST 端点（`/api/chat`、`/api/insurance/*`、`/api/assistant`），所有接口需要 HTTP Basic 认证（`@PreAuthorize` 实现细粒度权限控制）
 - **guardrail/** — Embabel GuardRail 实现，用于输入/输出内容安全校验
 - **dto/** — `request/` 和 `response/` 子包，结构化 API 请求响应契约
 - **config/** — SecurityConfig、CacheConfig、RAG 配置、DataInitializer、OpenAPI、Guardrail 装配
@@ -74,6 +75,4 @@
 
 5. **角色权限体系** — 四个角色：ADMIN > (UNDERWRITER, CLAIMS) > USER，支持层级权限。保险核心接口通过 `@PreAuthorize` 注解控制访问。
 
-### Phase 1 — 意图路由目标
-
-当前 `ChatController` 将所有消息路由到 `ChatbotAgent`（AI 客服问答）。Phase 1 将增加意图分类功能，使核保、理赔、支付等业务消息能路由到对应的 Agent 或 Service。
+6. **统一助手（Phase 1）** — `POST /api/assistant` 作为统一入口。`IntentClassifier` 关键词分类（核保/理赔/保单查询/客服），`AssistantService` 路由到对应 Agent/Service，返回结构化 `AssistantResponse`（含 type、text、data、actions）。前端体验在 `src/main/resources/static/index.html`。
