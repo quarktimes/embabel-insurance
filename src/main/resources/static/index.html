@@ -14,6 +14,52 @@
             align-items: center;
             justify-content: center;
         }
+
+        /* ── 登录遮罩 ── */
+        .login-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .login-box {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            width: 360px;
+            box-shadow: 0 12px 48px rgba(0,0,0,0.15);
+        }
+        .login-box h2 { margin-bottom: 8px; font-size: 20px; }
+        .login-box p { color: #888; font-size: 13px; margin-bottom: 20px; }
+        .login-box label { display: block; font-size: 13px; color: #333; margin-bottom: 4px; }
+        .login-box input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 12px;
+            outline: none;
+        }
+        .login-box input:focus { border-color: #1677ff; box-shadow: 0 0 0 2px rgba(22,119,255,0.1); }
+        .login-box .login-btn {
+            width: 100%;
+            background: #1677ff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        .login-box .login-btn:hover { background: #4096ff; }
+        .login-box .login-error { color: #cf1322; font-size: 13px; margin-top: 8px; display: none; }
+        .login-box .user-hint { font-size: 12px; color: #999; margin-top: 12px; line-height: 1.6; }
+        .login-box .user-hint code { background: #f5f5f5; padding: 1px 6px; border-radius: 4px; font-size: 11px; }
+
         .chat-container {
             width: 480px;
             height: 700px;
@@ -236,15 +282,42 @@
     <div class="status-bar" id="status"></div>
 </div>
 
+<!-- ── 登录遮罩 ── -->
+<div class="login-overlay" id="loginOverlay">
+    <div class="login-box">
+        <h2>🔐 智能保险助手</h2>
+        <p>请登录以开始使用</p>
+        <label>用户名</label>
+        <input type="text" id="loginUser" placeholder="例如：user" value="low-risk-user">
+        <label>密码</label>
+        <input type="password" id="loginPass" placeholder="密码" value="password">
+        <button class="login-btn" id="loginBtn">登录</button>
+        <div class="login-error" id="loginError">用户名或密码错误</div>
+        <div class="user-hint">
+            💡 预置用户：<br>
+            <code>low-risk-user</code> / <code>password</code> — 低风险（核保自动通过）<br>
+            <code>medium-risk-user</code> / <code>password</code> — 中风险（转人工）<br>
+            <code>high-risk-user</code> / <code>password</code> — 高风险（拒保）<br>
+            <code>user</code> / <code>password</code> — 普通用户
+        </div>
+    </div>
+</div>
+
 <script>
 const messagesEl = document.getElementById('messages');
 const inputEl = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
 const statusEl = document.getElementById('status');
 const suggestionsEl = document.getElementById('suggestions');
+const loginOverlay = document.getElementById('loginOverlay');
+const loginUser = document.getElementById('loginUser');
+const loginPass = document.getElementById('loginPass');
+const loginBtn = document.getElementById('loginBtn');
+const loginError = document.getElementById('loginError');
 
 let sessionId = null;
 let isLoading = false;
+let authHeader = '';
 
 // 建议问题
 const SUGGESTIONS = [
@@ -356,6 +429,36 @@ function typeMessage(role, fullText, type, actions, callback) {
     return div;
 }
 
+// ── 登录 ──
+loginBtn.addEventListener('click', async () => {
+    const user = loginUser.value.trim();
+    const pass = loginPass.value.trim();
+    if (!user || !pass) return;
+
+    authHeader = 'Basic ' + btoa(user + ':' + pass);
+    loginError.style.display = 'none';
+
+    // 验证凭据
+    try {
+        const res = await fetch('/api/insurance/health', {
+            headers: { 'Authorization': authHeader }
+        });
+        if (res.ok) {
+            loginOverlay.style.display = 'none';
+            inputEl.focus();
+        } else {
+            loginError.style.display = 'block';
+            authHeader = '';
+        }
+    } catch {
+        loginError.textContent = '无法连接服务器';
+        loginError.style.display = 'block';
+        authHeader = '';
+    }
+});
+loginUser.addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click(); });
+loginPass.addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click(); });
+
 // 发送消息
 function sendMessage(text) {
     if (!text) text = inputEl.value.trim();
@@ -376,10 +479,22 @@ function sendMessage(text) {
 
     fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader,
+        },
         body: JSON.stringify(body),
     })
-    .then(res => res.json())
+    .then(res => {
+        if (res.status === 401) {
+            loginOverlay.style.display = 'flex';
+            loginError.textContent = '会话已过期，请重新登录';
+            loginError.style.display = 'block';
+            authHeader = '';
+            throw new Error('Unauthorized');
+        }
+        return res.json();
+    })
     .then(data => {
         if (data.sessionId) sessionId = data.sessionId;
         typeMessage('assistant', data.text || '(无响应)', data.type, data.actions, () => {
@@ -387,14 +502,17 @@ function sendMessage(text) {
         });
     })
     .catch(err => {
-        addMessage('error', '请求失败: ' + err.message);
+        if (err.message !== 'Unauthorized') {
+            addMessage('error', '请求失败: ' + err.message);
+        }
         statusEl.textContent = '';
     })
     .finally(() => {
         isLoading = false;
         sendBtn.disabled = false;
         sendBtn.classList.remove('loading');
-        inputEl.focus();
+        if (loginOverlay.style.display !== 'none') inputEl.blur();
+        else inputEl.focus();
     });
 }
 

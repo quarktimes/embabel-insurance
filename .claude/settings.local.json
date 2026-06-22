@@ -60,7 +60,8 @@
       "Bash(./mvnw compile *)",
       "Bash(./mvnw test *)",
       "Bash(git checkout *)",
-      "Bash(git commit -m 'feat: Phase 1 — intent-based routing assistant with chat UI *)"
+      "Bash(git commit -m 'feat: Phase 1 — intent-based routing assistant with chat UI *)",
+      "Bash(git commit *)"
     ]
   }
 }

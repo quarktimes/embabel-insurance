@@ -45,7 +45,7 @@ public class DataInitializer {
                 customerRepository.save(lowRisk);
 
                 vehicleRepository.save(new Vehicle(
-                        "LOW001", "RAV4", "Toyota",
+                        "京A12345", "RAV4", "Toyota",
                         2022, 300_000, lowRisk
                 ));
 
@@ -62,7 +62,7 @@ public class DataInitializer {
                 customerRepository.save(mediumRisk);
 
                 vehicleRepository.save(new Vehicle(
-                        "MED001", "Civic", "Honda",
+                        "京B67890", "Civic", "Honda",
                         2018, 180_000, mediumRisk
                 ));
 
@@ -79,7 +79,7 @@ public class DataInitializer {
                 customerRepository.save(highRisk);
 
                 vehicleRepository.save(new Vehicle(
-                        "HIGH001", "X5", "BMW",
+                        "京C13579", "X5", "BMW",
                         2013, 600_000, highRisk
                 ));
 
@@ -95,7 +95,7 @@ public class DataInitializer {
                 customerRepository.save(legacyUser);
 
                 vehicleRepository.save(new Vehicle(
-                        "ABC123", "RAV4", "Toyota",
+                        "京A88888", "RAV4", "Toyota",
                         2020, 250_000, legacyUser
                 ));
 
@@ -110,7 +110,7 @@ public class DataInitializer {
                 customerRepository.save(legacyAdmin);
 
                 vehicleRepository.save(new Vehicle(
-                        "XYZ789", "Model 3", "Tesla",
+                        "京B99999", "Model 3", "Tesla",
                         2022, 450_000, legacyAdmin
                 ));
             }

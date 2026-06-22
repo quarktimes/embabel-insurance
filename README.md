@@ -51,9 +51,10 @@ export DEEPSEEK_API_KEY=your-deepseek-api-key
 
 应用默认在 `http://localhost:8080` 启动，使用 H2 内存数据库，启动时自动初始化测试数据。
 
-### 3. 体验 Agent
+### 3. 体验 AI 助手（推荐）
 
-应用启动后进入 Embabel Shell 模式，直接输入自然语言即可调用 Agent：
+应用启动后访问 **http://localhost:8080**，使用统一 Chat UI 直接对话。
+系统会自动识别你的意图并路由到对应的业务模块：
 
 ```
 # 核保：描述你的车辆和保险需求
