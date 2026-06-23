@@ -13,5 +13,7 @@ public enum Intent {
     /** 保单查询 */
     POLICY_QUERY,
     /** 查看报价单详情 */
-    VIEW_DETAILS
+    VIEW_DETAILS,
+    /** 支付保费 */
+    PAYMENT
 }

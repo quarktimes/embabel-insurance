@@ -7,6 +7,7 @@ import com.embabel.insurance.dto.response.PolicyResponse;
 import com.embabel.insurance.entity.Customer;
 import com.embabel.insurance.entity.Quote;
 import com.embabel.insurance.entity.Vehicle;
+import com.embabel.insurance.entity.Policy;
 import com.embabel.insurance.repository.QuoteRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,17 +41,20 @@ public class AssistantService {
     private final ChatService chatService;
     private final PolicyService policyService;
     private final QuoteRepository quoteRepository;
+    private final PaymentService paymentService;
 
     public AssistantService(IntentClassifier intentClassifier,
                             AgentService agentService,
                             ChatService chatService,
                             PolicyService policyService,
-                            QuoteRepository quoteRepository) {
+                            QuoteRepository quoteRepository,
+                            PaymentService paymentService) {
         this.intentClassifier = intentClassifier;
         this.agentService = agentService;
         this.chatService = chatService;
         this.policyService = policyService;
         this.quoteRepository = quoteRepository;
+        this.paymentService = paymentService;
     }
 
     /**
@@ -83,6 +87,7 @@ public class AssistantService {
                 case CLAIMS -> handleClaims(message, session);
                 case POLICY_QUERY -> handlePolicyQuery(userId, session);
                 case VIEW_DETAILS -> handleViewDetails(message, session);
+                case PAYMENT -> handlePayment(message, session);
                 case CHAT -> handleChat(userId, message, session, isNewSession);
             };
         } catch (Exception e) {
@@ -245,6 +250,55 @@ public class AssistantService {
         }
 
         return AssistantResponse.underwritingResult(session.id, text, data, actions);
+    }
+
+    private AssistantResponse handlePayment(String message, SessionRecord session) {
+        // 解析 quoteId："支付 quoteId=1" 或 "pay quoteId=1"
+        Long quoteId = null;
+        if (message.contains("quoteId=")) {
+            try {
+                quoteId = Long.parseLong(message.replaceAll(".*quoteId=(\\d+).*", "$1"));
+            } catch (NumberFormatException ignored) {}
+        }
+
+        if (quoteId == null) {
+            return AssistantResponse.error(session.id, "请指定要支付的报价单 ID。");
+        }
+
+        // 先查询报价单详情（JOIN FETCH 加载客户和车辆，供展示用）
+        Quote quote = quoteRepository.findByIdWithDetails(quoteId).orElse(null);
+        if (quote == null) {
+            return AssistantResponse.error(session.id, "未找到报价单 #" + quoteId);
+        }
+
+        try {
+            Policy policy = paymentService.payAndIssuePolicy(quoteId, "ALIPAY");
+
+            String text = "✅ **支付成功！**\n\n"
+                    + "**保单号：** " + policy.getPolicyNumber() + "\n"
+                    + "**投保人：** " + quote.getCustomer().getName() + "\n"
+                    + "**车辆：** " + quote.getVehicle().getBrand() + " " + quote.getVehicle().getModel()
+                    + "（" + quote.getVehicle().getLicensePlate() + "）\n"
+                    + "**险种：** " + policy.getCoverageType() + "\n"
+                    + "**保费：** ¥" + String.format("%,.0f", policy.getPremiumAmount()) + "\n"
+                    + "**生效日期：** " + policy.getEffectiveDate().toLocalDate() + "\n"
+                    + "**到期日期：** " + policy.getExpirationDate().toLocalDate() + "\n"
+                    + "**支付方式：** 支付宝\n\n"
+                    + "保单已签发，感谢您的投保！";
+
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("policyNumber", policy.getPolicyNumber());
+            data.put("premiumAmount", policy.getPremiumAmount());
+            data.put("coverageType", policy.getCoverageType());
+            data.put("effectiveDate", policy.getEffectiveDate().toString());
+            data.put("expirationDate", policy.getExpirationDate().toString());
+
+            return AssistantResponse.underwritingResult(session.id, text, data, List.of());
+
+        } catch (RuntimeException e) {
+            logger.error("Payment failed: {}", e.getMessage());
+            return AssistantResponse.error(session.id, "支付失败：" + e.getMessage());
+        }
     }
 
     private static String statusLabel(Quote.QuoteStatus status) {

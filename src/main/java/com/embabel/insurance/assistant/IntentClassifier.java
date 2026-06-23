@@ -38,6 +38,10 @@ public class IntentClassifier {
             "policy", "my policies"
     );
 
+    private static final List<String> PAYMENT_KEYWORDS = List.of(
+            "支付", "付款", "缴费", "pay"
+    );
+
     /**
      * 从用户消息中识别意图。
      *
@@ -60,17 +64,19 @@ public class IntentClassifier {
         int uwScore = countKeywords(lower, UNDERWRITING_KEYWORDS);
         int claimScore = countKeywords(lower, CLAIMS_KEYWORDS);
         int policyScore = countKeywords(lower, POLICY_KEYWORDS);
+        int payScore = countKeywords(lower, PAYMENT_KEYWORDS);
 
-        // 得分相同按优先级：核保 > 理赔 > 保单查询 > 客服
+        // 得分相同按优先级：核保 > 理赔 > 支付 > 保单查询 > 客服
         Intent result = Intent.CHAT;
         int maxScore = 0;
 
         if (uwScore > maxScore) { maxScore = uwScore; result = Intent.UNDERWRITING; }
         if (claimScore > maxScore) { maxScore = claimScore; result = Intent.CLAIMS; }
+        if (payScore > maxScore) { maxScore = payScore; result = Intent.PAYMENT; }
         if (policyScore > maxScore) { maxScore = policyScore; result = Intent.POLICY_QUERY; }
 
-        logger.debug("Intent classified: {} (scores: uw={}, claim={}, policy={})",
-                result, uwScore, claimScore, policyScore);
+        logger.debug("Intent classified: {} (scores: uw={}, claim={}, pay={}, policy={})",
+                result, uwScore, claimScore, payScore, policyScore);
 
         return result;
     }
