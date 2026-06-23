@@ -86,7 +86,24 @@
       "Bash(mysql -u root -e \"SELECT 1; FLUSH PRIVILEGES; ALTER USER 'root'@'localhost' IDENTIFIED BY 'root1234';\")",
       "Bash(pkill -9 -f mysqld)",
       "Bash(mysql -u root -p'Embabel@2024!' -e \"CREATE DATABASE IF NOT EXISTS embabel_insurance CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci\")",
-      "Bash(mysql -u root -p'Embabel@2024!' -e \"SHOW DATABASES\")"
+      "Bash(mysql -u root -p'Embabel@2024!' -e \"SHOW DATABASES\")",
+      "Bash(open -a Docker)",
+      "Bash(javap -p /tmp/com/embabel/common/core/types/SimilarityResult.class)",
+      "Bash(javap -p com/embabel/agent/rag/service/spring/DocumentSimilarityResult.class)",
+      "Bash(javap -p io/qdrant/client/QdrantClient.class)",
+      "Bash(javap -p io/qdrant/client/VectorsFactory.class)",
+      "Bash(javap -p io/qdrant/client/grpc/Points.class)",
+      "Bash(javap -p io/qdrant/client/grpc/PointsService.class)",
+      "Bash(javap -p io/qdrant/client/QdrantGrpcClient.class)",
+      "Bash(javap -p com/embabel/agent/rag/model/MaterializedDocument.class)",
+      "Bash(javap -p com/embabel/agent/rag/model/NavigableSection.class)",
+      "Bash(javap -p com/embabel/agent/rag/model/Section.class)",
+      "Bash(javap -p com/embabel/agent/rag/model/LeafSection.class)",
+      "Bash(./mvnv test-compile *)",
+      "Bash(./mvnw test-compile *)",
+      "Bash(grep -A5 \"error\\\\|failure\" /Users/dehualiu/Documents/project/aiproject/embabel-insurance/target/surefire-reports/TEST-com.embabel.insurance.agent.ChatbotAgentTest\\\\$AnswerQuestionTests.xml 2>/dev/null | head -20)",
+      "Read(//Users/dehualiu/Documents/project/aiproject/embabel-insurance/target/surefire-reports/**)",
+      "Bash(grep -o 'Unresolved compilation problem[^<]*' /Users/dehualiu/Documents/project/aiproject/embabel-insurance/target/surefire-reports/TEST-com.embabel.insurance.agent.ChatbotAgentTest\\\\$AnswerQuestionTests.xml 2>/dev/null | head -5 *)"
     ]
   }
 }

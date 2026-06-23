@@ -50,6 +50,19 @@ insurance:
       name: insurance-lucene
       chunk-size: 1000
       chunk-overlap: 200
+    qdrant:
+      host: ${QDRANT_HOST:localhost}
+      rest-port: ${QDRANT_REST_PORT:6333}
+      collection-name: insurance_docs
+      vector-size: 1536
+    embedding:
+      enabled: true
+      model: text-embedding-3-small
+      base-url: https://api.deepseek.com/v1
+      api-key: ${DEEPSEEK_API_KEY}
+      dimensions: 1536
+    hybrid:
+      rrf-k: 60
 server:
   port: 8080
 

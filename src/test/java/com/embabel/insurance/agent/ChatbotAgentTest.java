@@ -6,6 +6,7 @@ import com.embabel.agent.api.common.PromptRunner;
 import com.embabel.agent.domain.io.UserInput;
 import com.embabel.agent.rag.tools.ToolishRag;
 import com.embabel.common.ai.model.LlmOptions;
+import com.embabel.insurance.rag.HybridSearchService;
 import com.embabel.insurance.service.LlmSelectionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -35,6 +37,7 @@ class ChatbotAgentTest {
     private ChatbotAgent agent;
     private LlmSelectionService llmSelectionService;
     private ToolishRag insuranceRag;
+    private HybridSearchService hybridSearchService;
     private OperationContext mockContext;
     private Ai mockAi;
     private PromptRunner mockPromptRunner;
@@ -43,14 +46,16 @@ class ChatbotAgentTest {
     void setUp() {
         llmSelectionService = mock(LlmSelectionService.class);
         insuranceRag = mock(ToolishRag.class);
+        hybridSearchService = mock(HybridSearchService.class);
         mockContext = mock(OperationContext.class);
         mockAi = mock(Ai.class);
         mockPromptRunner = mock(PromptRunner.class);
 
         // Mock LlmOptions for chat
         when(llmSelectionService.forChat()).thenReturn(LlmOptions.withLlmForRole("balanced"));
+        when(hybridSearchService.search(anyString(), anyInt(), anyDouble())).thenReturn(List.of());
 
-        agent = new ChatbotAgent(llmSelectionService, insuranceRag);
+        agent = new ChatbotAgent(llmSelectionService, insuranceRag, hybridSearchService);
     }
 
     // ── answerQuestion ──────────────────────────────────────────────

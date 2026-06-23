@@ -151,7 +151,7 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- SpringDoc OpenAPI for Swagger UI (3.0.x for Spring Boot 4.x) -->
+<!-- SpringDoc OpenAPI for Swagger UI (3.0.x for Spring Boot 4.x) -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>

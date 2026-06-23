@@ -2,6 +2,7 @@ package com.embabel.insurance.service;
 
 import com.embabel.agent.rag.lucene.LuceneSearchOperations;
 import com.embabel.agent.rag.model.*;
+import com.embabel.insurance.rag.QdrantSearchOperations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,6 +34,7 @@ public class DocumentIngestionService {
 
     private final ResourceLoader resourceLoader;
     private final LuceneSearchOperations luceneSearchOperations;
+    private final QdrantSearchOperations qdrantSearchOperations;
 
     @Value("${insurance.rag.documents-path:classpath:documents/}")
     private String documentsPath;
@@ -43,13 +45,21 @@ public class DocumentIngestionService {
     @Value("#{'${insurance.rag.documents}'.split(',')}")
     private List<String> documentFiles;
 
+    @Value("${insurance.rag.lucene.chunk-size:1000}")
+    private int chunkSize;
+
+    @Value("${insurance.rag.lucene.chunk-overlap:200}")
+    private int chunkOverlap;
+
     private final Map<String, String> ingestedDocumentUris = new ConcurrentHashMap<>();
     private boolean ingested = false;
 
     public DocumentIngestionService(ResourceLoader resourceLoader,
-                                     LuceneSearchOperations luceneSearchOperations) {
+                                     LuceneSearchOperations luceneSearchOperations,
+                                     QdrantSearchOperations qdrantSearchOperations) {
         this.resourceLoader = resourceLoader;
         this.luceneSearchOperations = luceneSearchOperations;
+        this.qdrantSearchOperations = qdrantSearchOperations;
     }
 
     public void autoIngestIfConfigured() {
@@ -121,6 +131,9 @@ public class DocumentIngestionService {
 
             // writeAndChunkDocument 处理：分块 → Lucene 索引 → 提交
             List<String> chunkIds = luceneSearchOperations.writeAndChunkDocument(document);
+
+            // 同时写入 Qdrant 向量库（如果可用）
+            writeChunksToQdrant(document, chunkIds);
 
             logger.info("Indexed document '{}' into Lucene: {} chunks", fileName, chunkIds.size());
             return chunkIds.size();
@@ -243,6 +256,38 @@ public class DocumentIngestionService {
 
     public List<String> getIngestedDocumentNames() {
         return new ArrayList<>(ingestedDocumentUris.keySet());
+    }
+
+    // ---- Qdrant 向量写入 ----
+
+    /**
+     * 将文档的各章节文本写入 Qdrant 向量库。
+     * 每个 section/subsection 作为一个独立的 chunk，与 Lucene 的分块对齐。
+     */
+    private void writeChunksToQdrant(MaterializedDocument document, List<String> chunkIds) {
+        if (!qdrantSearchOperations.isAvailable()) return;
+
+        Map<String, String> qdrantChunks = new LinkedHashMap<>();
+        int chunkIndex = 0;
+
+        for (NavigableSection section : document.getChildren()) {
+            for (NavigableSection subSection : section.getChildren()) {
+                if (subSection instanceof LeafSection leaf) {
+                    String text = leaf.getText();
+                    if (text != null && !text.isBlank()) {
+                        String chunkText = section.getTitle() + "\n" + leaf.getTitle() + "\n" + text;
+                        String chunkId = chunkIndex < chunkIds.size() ? chunkIds.get(chunkIndex) : UUID.randomUUID().toString();
+                        qdrantChunks.put(chunkId, chunkText);
+                        chunkIndex++;
+                    }
+                }
+            }
+        }
+
+        if (!qdrantChunks.isEmpty()) {
+            qdrantSearchOperations.writeChunks(qdrantChunks);
+            logger.info("Wrote {} chunks to Qdrant for document '{}'", qdrantChunks.size(), document.getTitle());
+        }
     }
 
     // ---- 搜索委托给 LuceneSearchOperations ----

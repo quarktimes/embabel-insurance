@@ -10,6 +10,7 @@ import com.embabel.common.ai.model.LlmOptions;
 import com.embabel.agent.api.common.StuckHandler;
 import com.embabel.agent.api.common.StuckHandlerResult;
 import com.embabel.agent.api.common.StuckHandlingResultCode;
+import com.embabel.insurance.rag.HybridSearchService;
 import com.embabel.insurance.service.LlmSelectionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,10 +41,14 @@ public class ChatbotAgent implements StuckHandler {
 
     private final LlmSelectionService llmSelectionService;
     private final ToolishRag insuranceRag;
+    private final HybridSearchService hybridSearchService;
 
-    public ChatbotAgent(LlmSelectionService llmSelectionService, ToolishRag insuranceRag) {
+    public ChatbotAgent(LlmSelectionService llmSelectionService,
+                        ToolishRag insuranceRag,
+                        HybridSearchService hybridSearchService) {
         this.llmSelectionService = llmSelectionService;
         this.insuranceRag = insuranceRag;
+        this.hybridSearchService = hybridSearchService;
     }
 
     /**
@@ -94,6 +99,23 @@ public class ChatbotAgent implements StuckHandler {
         LlmOptions chatOptions = llmSelectionService.forChat();
 
         try {
+            // 预检索：BM25 + Qdrant 混合搜索，注入前 5 条结果作为上下文
+            String hybridContext = "";
+            try {
+                var hybridResults = hybridSearchService.search(message, 5, 0.3);
+                if (!hybridResults.isEmpty()) {
+                    StringBuilder ctx = new StringBuilder("\n## Pre-retrieved Knowledge Base Results\n");
+                    for (int i = 0; i < hybridResults.size(); i++) {
+                        var r = hybridResults.get(i);
+                        ctx.append("[").append(i + 1).append("] (source: ").append(r.source()).append(")\n");
+                        ctx.append(r.text()).append("\n\n");
+                    }
+                    hybridContext = ctx.toString();
+                }
+            } catch (Exception e) {
+                logger.warn("Hybrid pre-search failed, falling back to tool-only RAG: {}", e.getMessage());
+            }
+
             String answer = context.ai()
                     .withLlm(chatOptions.withTemperature(0.0))
                     .withReference(insuranceRag)
@@ -126,9 +148,11 @@ public class ChatbotAgent implements StuckHandler {
                             After the second search, always answer immediately regardless of \
                             result quality.
 
+                            ## Pre-retrieved Context (for reference)%s
+
                             ## User Question
                             %s
-                            """.formatted(message));
+                            """.formatted(hybridContext, message));
 
             logger.info("Generated answer via Agentic RAG (length={})", answer.length());
 

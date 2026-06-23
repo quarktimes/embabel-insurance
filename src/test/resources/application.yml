@@ -39,6 +39,9 @@ embabel:
 
 insurance:
   rag:
+    qdrant:
+      host: localhost
+      rest-port: 16333   # 测试环境用不存在端口，确保自动降级
     documents-path: classpath:documents/
     documents: comprehensive_vehicle_insurance.md,claims_guide.md,faq.md
     auto-ingest: false
