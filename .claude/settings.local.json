@@ -61,7 +61,8 @@
       "Bash(./mvnw test *)",
       "Bash(git checkout *)",
       "Bash(git commit -m 'feat: Phase 1 — intent-based routing assistant with chat UI *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/api/insurance/health)"
     ]
   }
 }

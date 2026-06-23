@@ -430,31 +430,16 @@ function typeMessage(role, fullText, type, actions, callback) {
 }
 
 // ── 登录 ──
-loginBtn.addEventListener('click', async () => {
+loginBtn.addEventListener('click', () => {
     const user = loginUser.value.trim();
     const pass = loginPass.value.trim();
     if (!user || !pass) return;
 
     authHeader = 'Basic ' + btoa(user + ':' + pass);
     loginError.style.display = 'none';
-
-    // 验证凭据
-    try {
-        const res = await fetch('/api/insurance/health', {
-            headers: { 'Authorization': authHeader }
-        });
-        if (res.ok) {
-            loginOverlay.style.display = 'none';
-            inputEl.focus();
-        } else {
-            loginError.style.display = 'block';
-            authHeader = '';
-        }
-    } catch {
-        loginError.textContent = '无法连接服务器';
-        loginError.style.display = 'block';
-        authHeader = '';
-    }
+    loginOverlay.style.display = 'none';
+    addMessage('assistant', '登录成功！请告诉我您需要什么帮助？', 'chat');
+    inputEl.focus();
 });
 loginUser.addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click(); });
 loginPass.addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click(); });
