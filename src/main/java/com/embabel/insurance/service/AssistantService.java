@@ -146,7 +146,18 @@ public class AssistantService {
     }
 
     private AssistantResponse handleClaims(String message, SessionRecord session) {
-        // 从消息中提取键值对格式，或直接转发给 AgentService
+        // 检查是否包含 policy= 参数，理赔 Agent 需要结构化输入
+        if (!message.matches("(?s).*\\bpolicy=\\S+.*")) {
+            String text = "⚠️ 理赔需要提供以下信息：\n\n"
+                    + "**保单号**（必填）：您的保单编号\n"
+                    + "**事故描述**：发生经过\n"
+                    + "**损失金额**：预估损失\n\n"
+                    + "例如：\n"
+                    + "`policy=POL-001 description=停车场被刮蹭 amount=5000`\n\n"
+                    + "您可以从「我的保单」查看您的保单号。";
+            return AssistantResponse.claimResult(session.id, text, Map.of("requires_policy", true), List.of());
+        }
+
         var claimResult = agentService.processClaim(message);
 
         Map<String, Object> data = new LinkedHashMap<>();
