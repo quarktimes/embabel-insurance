@@ -1,5 +1,6 @@
 package com.embabel.insurance.config;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -64,7 +65,11 @@ public class SecurityConfig {
                 .requestMatchers("/api/insurance/**").authenticated()
                 .anyRequest().authenticated()
             )
-            .httpBasic(httpBasic -> {});
+            .httpBasic(httpBasic -> httpBasic
+                    .authenticationEntryPoint((request, response, authException) -> {
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+                    })
+            );
 
         return http.build();
     }
