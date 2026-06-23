@@ -23,8 +23,8 @@ public class IntentClassifier {
     private static final Logger logger = LoggerFactory.getLogger(IntentClassifier.class);
 
     private static final List<String> UNDERWRITING_KEYWORDS = List.of(
-            "投保", "核保", "报价", "保费", "车险", "上保险",
-            "insure", "underwriting", "quote", "premium"
+            "投保", "核保", "报价", "保费", "上保险",
+            "insure", "underwriting"
     );
 
     private static final List<String> CLAIMS_KEYWORDS = List.of(
