@@ -11,5 +11,7 @@ public enum Intent {
     /** 理赔申请 */
     CLAIMS,
     /** 保单查询 */
-    POLICY_QUERY
+    POLICY_QUERY,
+    /** 查看报价单详情 */
+    VIEW_DETAILS
 }

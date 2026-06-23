@@ -4,6 +4,10 @@ import com.embabel.insurance.assistant.Intent;
 import com.embabel.insurance.assistant.IntentClassifier;
 import com.embabel.insurance.dto.response.AssistantResponse;
 import com.embabel.insurance.dto.response.PolicyResponse;
+import com.embabel.insurance.entity.Customer;
+import com.embabel.insurance.entity.Quote;
+import com.embabel.insurance.entity.Vehicle;
+import com.embabel.insurance.repository.QuoteRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -35,15 +39,18 @@ public class AssistantService {
     private final AgentService agentService;
     private final ChatService chatService;
     private final PolicyService policyService;
+    private final QuoteRepository quoteRepository;
 
     public AssistantService(IntentClassifier intentClassifier,
                             AgentService agentService,
                             ChatService chatService,
-                            PolicyService policyService) {
+                            PolicyService policyService,
+                            QuoteRepository quoteRepository) {
         this.intentClassifier = intentClassifier;
         this.agentService = agentService;
         this.chatService = chatService;
         this.policyService = policyService;
+        this.quoteRepository = quoteRepository;
     }
 
     /**
@@ -75,6 +82,7 @@ public class AssistantService {
                 case UNDERWRITING -> handleUnderwriting(userId, message, session);
                 case CLAIMS -> handleClaims(message, session);
                 case POLICY_QUERY -> handlePolicyQuery(userId, session);
+                case VIEW_DETAILS -> handleViewDetails(message, session);
                 case CHAT -> handleChat(userId, message, session, isNewSession);
             };
         } catch (Exception e) {
@@ -181,6 +189,71 @@ public class AssistantService {
         }
 
         return AssistantResponse.policyList(session.id, text, data);
+    }
+
+    private AssistantResponse handleViewDetails(String message, SessionRecord session) {
+        // 从消息中解析 quoteId，"view_details quoteId=1"
+        Long quoteId = null;
+        if (message.contains("quoteId=")) {
+            try {
+                quoteId = Long.parseLong(message.replaceAll(".*quoteId=(\\d+).*", "$1"));
+            } catch (NumberFormatException ignored) {}
+        }
+
+        if (quoteId == null) {
+            return AssistantResponse.error(session.id, "请指定要查看的报价单 ID。");
+        }
+
+        Optional<Quote> quoteOpt = quoteRepository.findById(quoteId);
+        if (quoteOpt.isEmpty()) {
+            return AssistantResponse.error(session.id, "未找到报价单 #" + quoteId);
+        }
+
+        Quote quote = quoteOpt.get();
+        Customer customer = quote.getCustomer();
+        Vehicle vehicle = quote.getVehicle();
+
+        String text = "📋 **报价单 #" + quote.getId() + "**\n\n"
+                + "**投保人：** " + customer.getName() + "\n"
+                + "**车辆：** " + vehicle.getBrand() + " " + vehicle.getModel()
+                + "（" + vehicle.getLicensePlate() + "）\n"
+                + "**车辆年份：** " + vehicle.getYear() + "\n"
+                + "**车辆价值：** ¥" + String.format("%,.0f", vehicle.getMarketValue()) + "\n"
+                + "**险种：** " + quote.getCoverageType() + "\n"
+                + "**风险评分：** " + String.format("%.0f", quote.getRiskScore()) + "/100\n"
+                + "**保费：** ¥" + String.format("%,.0f", quote.getPremiumAmount()) + "\n"
+                + "**状态：** " + statusLabel(quote.getStatus()) + "\n"
+                + "**创建时间：** " + quote.getCreatedAt().toLocalDate() + "\n"
+                + (quote.getExpiresAt() != null ? "**有效期至：** " + quote.getExpiresAt().toLocalDate() : "");
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("quoteId", quote.getId());
+        data.put("customerName", customer.getName());
+        data.put("vehicle", vehicle.getBrand() + " " + vehicle.getModel());
+        data.put("licensePlate", vehicle.getLicensePlate());
+        data.put("riskScore", quote.getRiskScore());
+        data.put("premiumAmount", quote.getPremiumAmount());
+        data.put("coverageType", quote.getCoverageType());
+        data.put("status", quote.getStatus().name());
+        data.put("createdAt", quote.getCreatedAt().toString());
+
+        List<AssistantResponse.Action> actions = new ArrayList<>();
+        if (quote.getStatus() == Quote.QuoteStatus.APPROVED) {
+            actions.add(new AssistantResponse.Action(
+                    "💳 支付 ¥" + String.format("%,.0f", quote.getPremiumAmount()),
+                    "pay", Map.of("quoteId", quote.getId())));
+        }
+
+        return AssistantResponse.underwritingResult(session.id, text, data, actions);
+    }
+
+    private static String statusLabel(Quote.QuoteStatus status) {
+        return switch (status) {
+            case PENDING -> "⏳ 待处理";
+            case APPROVED -> "✅ 已批准";
+            case REFERRED -> "👤 转人工";
+            case DECLINED -> "❌ 已拒绝";
+        };
     }
 
     private AssistantResponse handleChat(String userId, String message, SessionRecord session, boolean isNewSession) {

@@ -51,6 +51,11 @@ public class IntentClassifier {
 
         String lower = message.toLowerCase();
 
+        // 优先匹配精确的操作命令
+        if (lower.startsWith("view_details")) {
+            return Intent.VIEW_DETAILS;
+        }
+
         // 按分数规则匹配，而非命中即返回，避免歧义
         int uwScore = countKeywords(lower, UNDERWRITING_KEYWORDS);
         int claimScore = countKeywords(lower, CLAIMS_KEYWORDS);
@@ -60,7 +65,6 @@ public class IntentClassifier {
         Intent result = Intent.CHAT;
         int maxScore = 0;
 
-        // 2 倍权重给核保，避免 "保费" 等通用词被误分
         if (uwScore > maxScore) { maxScore = uwScore; result = Intent.UNDERWRITING; }
         if (claimScore > maxScore) { maxScore = claimScore; result = Intent.CLAIMS; }
         if (policyScore > maxScore) { maxScore = policyScore; result = Intent.POLICY_QUERY; }

@@ -380,6 +380,8 @@ function addActions(msgEl, actions) {
         btn.onclick = () => {
             if (a.action === 'pay') {
                 sendMessage(`支付 quoteId=${a.payload?.quoteId}`);
+            } else if (a.action === 'view_details') {
+                sendMessage(`view_details quoteId=${a.payload?.quoteId}`);
             } else {
                 sendMessage(`查看 ${a.action}`);
             }
