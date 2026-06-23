@@ -43,6 +43,12 @@ public class IntentClassifier {
             "支付", "付款", "缴费", "pay"
     );
 
+    /** 疑问词列表 — 含疑问词时降级为 CHAT（问知识而非执行操作） */
+    private static final List<String> QUESTION_WORDS = List.of(
+            "什么", "怎样", "如何", "怎么", "为什么", "吗",
+            "what", "how", "why", "which"
+    );
+
     /**
      * 从用户消息中识别意图。
      *
@@ -61,6 +67,9 @@ public class IntentClassifier {
             return Intent.VIEW_DETAILS;
         }
 
+        // 检查是否为疑问句（含疑问词）— 优先降级为 CHAT
+        boolean isQuestion = countKeywords(lower, QUESTION_WORDS) > 0;
+
         // 按分数规则匹配，而非命中即返回，避免歧义
         int uwScore = countKeywords(lower, UNDERWRITING_KEYWORDS);
         int claimScore = countKeywords(lower, CLAIMS_KEYWORDS);
@@ -76,8 +85,14 @@ public class IntentClassifier {
         if (payScore > maxScore) { maxScore = payScore; result = Intent.PAYMENT; }
         if (policyScore > maxScore) { maxScore = policyScore; result = Intent.POLICY_QUERY; }
 
-        logger.debug("Intent classified: {} (scores: uw={}, claim={}, pay={}, policy={})",
-                result, uwScore, claimScore, payScore, policyScore);
+        // 如果匹配到了业务意图但是疑问句 → 降级为 CHAT（知识问答）
+        if (isQuestion && result != Intent.CHAT) {
+            logger.debug("Downgrading {} to CHAT — message is a question", result);
+            result = Intent.CHAT;
+        }
+
+        logger.debug("Intent classified: {} (scores: uw={}, claim={}, pay={}, policy={}, isQuestion={})",
+                result, uwScore, claimScore, payScore, policyScore, isQuestion);
 
         return result;
     }
