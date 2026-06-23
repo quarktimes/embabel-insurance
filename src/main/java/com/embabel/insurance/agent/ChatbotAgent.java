@@ -107,9 +107,9 @@ public class ChatbotAgent implements StuckHandler {
                             knowledge base.
 
                             ## Instructions
-                            1. **MUST search first**: Use the `insurance_docs_textSearch` tool \
-                            to find relevant policy clauses, claims procedures, or FAQ entries. \
-                            Try different query formulations if needed.
+                            1. **Search at most ONCE**: Use `insurance_docs_textSearch` to find \
+                            relevant information. Do NOT search again after getting results — \
+                            answer with what you have.
                             2. **Synthesize answer**: Based on the search results, provide a \
                             clear, accurate answer that directly addresses the user's question.
                             3. **Cite sources**: Reference the document name and section when \
@@ -118,6 +118,10 @@ public class ChatbotAgent implements StuckHandler {
                             information, tell the user honestly and suggest contacting customer \
                             service at 400-XXX-XXXX.
                             5. **Language**: Respond in the same language as the user's question.
+                            6. **CRITICAL — NO search loops**: Search once, then answer. \
+                            Do not search multiple times or try different query formulations. \
+                            If the first search finds nothing useful, tell the user and suggest \
+                            contacting customer service.
 
                             ## User Question
                             %s
