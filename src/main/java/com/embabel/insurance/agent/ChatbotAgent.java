@@ -107,21 +107,24 @@ public class ChatbotAgent implements StuckHandler {
                             knowledge base.
 
                             ## Instructions
-                            1. **Search at most ONCE**: Use `insurance_docs_textSearch` to find \
-                            relevant information. Do NOT search again after getting results — \
-                            answer with what you have.
-                            2. **Synthesize answer**: Based on the search results, provide a \
+                            1. **Search first**: Use `insurance_docs_textSearch` to find \
+                            relevant information before answering. Search with concise, \
+                            targeted keywords (3-5 words max) extracted from the user question.
+                            2. **At most 2 searches**: Search once. If the first search returns \
+                            zero relevant results, you may try one more search with different \
+                            keywords. If the first search already finds useful content, \
+                            do NOT search again — answer immediately.
+                            3. **Synthesize answer**: Based on the search results, provide a \
                             clear, accurate answer that directly addresses the user's question.
-                            3. **Cite sources**: Reference the document name and section when \
+                            4. **Cite sources**: Reference the document name and section when \
                             presenting information from the knowledge base.
-                            4. **Be honest**: If the knowledge base doesn't contain enough \
-                            information, tell the user honestly and suggest contacting customer \
-                            service at 400-XXX-XXXX.
-                            5. **Language**: Respond in the same language as the user's question.
-                            6. **CRITICAL — NO search loops**: Search once, then answer. \
-                            Do not search multiple times or try different query formulations. \
-                            If the first search finds nothing useful, tell the user and suggest \
-                            contacting customer service.
+                            5. **Be honest**: If after 2 searches the knowledge base still \
+                            doesn't contain enough information, tell the user honestly and \
+                            suggest contacting customer service at 400-XXX-XXXX.
+                            6. **Language**: Respond in the same language as the user's question.
+                            7. **CRITICAL — NO search loops**: Never search more than twice. \
+                            After the second search, always answer immediately regardless of \
+                            result quality.
 
                             ## User Question
                             %s
