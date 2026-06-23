@@ -143,7 +143,11 @@ public class ChatbotAgent implements StuckHandler {
     public StuckHandlerResult handleStuck(AgentProcess agentProcess) {
         logger.error("============================================================");
         logger.error("=== ChatbotAgent STUCK DIAGNOSTICS ===");
-        logger.error("=== Process status: {} ===", agentProcess.getStatus());
+        if (agentProcess != null) {
+            logger.error("=== Process status: {} ===", agentProcess.getStatus());
+        } else {
+            logger.error("=== Process status: N/A (AgentInvocation mode, no AgentProcess) ===");
+        }
         logger.error("=== Likely stuck in: answerQuestion (Agentic RAG LLM call) ===");
         logger.error("=== This agent uses ToolishRag for insurance_docs_textSearch, ===");
         logger.error("=== then LLM synthesizes answer — both can hang on LLM timeout ===");

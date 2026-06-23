@@ -30,6 +30,7 @@ public class IntentClassifier {
     private static final List<String> CLAIMS_KEYWORDS = List.of(
             "理赔", "事故", "索赔", "赔偿", "出险",
             "刮蹭", "碰撞", "追尾", "报保险",
+            "停车场", "被刮",
             "claim", "accident", "collision"
     );
 
