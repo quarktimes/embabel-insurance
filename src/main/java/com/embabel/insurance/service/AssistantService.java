@@ -204,7 +204,7 @@ public class AssistantService {
             return AssistantResponse.error(session.id, "请指定要查看的报价单 ID。");
         }
 
-        Optional<Quote> quoteOpt = quoteRepository.findById(quoteId);
+        Optional<Quote> quoteOpt = quoteRepository.findByIdWithDetails(quoteId);
         if (quoteOpt.isEmpty()) {
             return AssistantResponse.error(session.id, "未找到报价单 #" + quoteId);
         }
@@ -218,7 +218,7 @@ public class AssistantService {
                 + "**车辆：** " + vehicle.getBrand() + " " + vehicle.getModel()
                 + "（" + vehicle.getLicensePlate() + "）\n"
                 + "**车辆年份：** " + vehicle.getYear() + "\n"
-                + "**车辆价值：** ¥" + String.format("%,.0f", vehicle.getMarketValue()) + "\n"
+                + "**车辆价值：** ¥" + String.format("%,.0f", vehicle.getVehicleValue()) + "\n"
                 + "**险种：** " + quote.getCoverageType() + "\n"
                 + "**风险评分：** " + String.format("%.0f", quote.getRiskScore()) + "/100\n"
                 + "**保费：** ¥" + String.format("%,.0f", quote.getPremiumAmount()) + "\n"
