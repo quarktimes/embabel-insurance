@@ -134,7 +134,7 @@ class ChatbotAgentTest {
         }
 
         @Test
-        @DisplayName("Should include MUST search first instruction in prompt")
+        @DisplayName("Should include search instruction in prompt")
         void shouldIncludeMustSearchFirstInstruction() {
             when(mockContext.ai()).thenReturn(mockAi);
             when(mockAi.withLlm(any(LlmOptions.class))).thenReturn(mockPromptRunner);
@@ -146,7 +146,7 @@ class ChatbotAgentTest {
             agent.answerQuestion(input, mockContext);
 
             verify(mockPromptRunner).generateText(org.mockito.ArgumentMatchers.<String>argThat(prompt ->
-                    prompt.contains("MUST search first")
+                    prompt.contains("Search first")
                             && prompt.contains("Synthesize")
                             && prompt.contains("Cite sources")
                             && prompt.contains("Be honest")));

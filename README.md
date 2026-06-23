@@ -35,23 +35,39 @@
 
 - Java 21+
 - Maven 3.8+
+- MySQL 8.0+（运行中）
 - DeepSeek API Key
 
-### 1. 设置 API Key
+### 1. 数据库准备
+
+```bash
+# 确保 MySQL 已启动，创建数据库
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS embabel_insurance CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+```
+
+数据库连接通过环境变量配置（可选，有默认值）：
+
+| 变量 | 默认值 |
+|------|--------|
+| `MYSQL_URL` | `jdbc:mysql://localhost:3306/embabel_insurance?createDatabaseIfNotExist=true` |
+| `MYSQL_USER` | `root` |
+| `MYSQL_PASSWORD` | `Embabel@2024!` |
+
+### 2. 设置 API Key
 
 ```bash
 export DEEPSEEK_API_KEY=your-deepseek-api-key
 ```
 
-### 2. 启动应用
+### 3. 启动应用
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-应用默认在 `http://localhost:8080` 启动，使用 H2 内存数据库，启动时自动初始化测试数据。
+应用默认在 `http://localhost:8080` 启动，使用 MySQL 数据库，启动时自动初始化测试数据。
 
-### 3. 体验 AI 助手（推荐）
+### 4. 体验 AI 助手（推荐）
 
 应用启动后访问 **http://localhost:8080**，使用统一 Chat UI 直接对话。
 系统会自动识别你的意图并路由到对应的业务模块：
@@ -67,7 +83,7 @@ policy=POL-001 description=停车场被刮蹭 amount=5000 userId=user
 什么是综合险？理赔流程是怎样的？
 ```
 
-### 4. REST API
+### 5. REST API
 
 也可以通过 REST API 调用（需要 HTTP Basic 认证）：
 
@@ -85,7 +101,7 @@ curl -u user:password -X POST http://localhost:8080/api/insurance/claim \
 
 Swagger UI：`http://localhost:8080/swagger-ui.html`（免认证访问）
 
-### 5. 测试用户
+### 6. 测试用户
 
 | 用户名 | 密码 | 角色 | 权限 |
 |--------|------|------|------|

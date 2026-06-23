@@ -2,10 +2,10 @@ spring:
   application:
     name: smart-insurance-platform
   datasource:
-    url: jdbc:h2:mem:insurance;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: ""
+    url: ${MYSQL_URL:jdbc:mysql://localhost:3306/embabel_insurance?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:Embabel@2024!}
   jpa:
     hibernate:
       ddl-auto: update
@@ -13,10 +13,7 @@ spring:
     properties:
       hibernate:
         format_sql: false
-    h2:
-      console:
-        enabled: true
-        path: /h2-console
+        dialect: org.hibernate.dialect.MySQLDialect
 
 embabel:
   models:

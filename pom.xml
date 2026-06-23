@@ -144,6 +144,13 @@
             <artifactId>h2</artifactId>
         </dependency>
 
+        <!-- MySQL Connector（生产/本地 MySQL 数据源） -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- SpringDoc OpenAPI for Swagger UI (3.0.x for Spring Boot 4.x) -->
         <dependency>
             <groupId>org.springdoc</groupId>
