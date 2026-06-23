@@ -33,6 +33,9 @@ import org.springframework.security.web.SecurityFilterChain;
  *
  * <p>测试用户：
  * <ul>
+ *   <li>low-risk-user / password — 低风险用户，核保自动通过</li>
+ *   <li>medium-risk-user / password — 中风险用户，核保转人工</li>
+ *   <li>high-risk-user / password — 高风险用户，核保拒绝</li>
  *   <li>user / password — USER 角色，可使用聊天和查看保单</li>
  *   <li>underwriter / underwriter — UNDERWRITER 角色，可处理核保和审批报价单</li>
  *   <li>claims / claims — CLAIMS 角色，可处理理赔和审核理赔单</li>
@@ -117,7 +120,31 @@ public class SecurityConfig {
                         "rag:admin")
             .build();
 
-        return new InMemoryUserDetailsManager(user, underwriter, claimsHandler, admin);
+        // 低风险用户 — 核保自动通过
+        UserDetails lowRisk = User.builder()
+            .username("low-risk-user")
+            .password(passwordEncoder().encode("password"))
+            .roles("USER")
+            .authorities("underwriting:write", "underwriting:read", "policies:read", "chat:use")
+            .build();
+
+        // 中风险用户 — 核保转人工
+        UserDetails mediumRisk = User.builder()
+            .username("medium-risk-user")
+            .password(passwordEncoder().encode("password"))
+            .roles("USER")
+            .authorities("underwriting:write", "underwriting:read", "policies:read", "chat:use")
+            .build();
+
+        // 高风险用户 — 核保拒绝
+        UserDetails highRisk = User.builder()
+            .username("high-risk-user")
+            .password(passwordEncoder().encode("password"))
+            .roles("USER")
+            .authorities("underwriting:write", "underwriting:read", "policies:read", "chat:use")
+            .build();
+
+        return new InMemoryUserDetailsManager(lowRisk, mediumRisk, highRisk, user, underwriter, claimsHandler, admin);
     }
 
     @Bean
