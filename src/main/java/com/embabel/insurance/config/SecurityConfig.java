@@ -49,12 +49,18 @@ public class SecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
+                // 静态页面 — 允许无认证加载，前端 JS 自行处理登录
+                .requestMatchers("/", "/index.html").permitAll()
+                // Swagger 文档页
                 .requestMatchers(
                         "/swagger-ui/**", "/swagger-ui.html",
                         "/v3/api-docs/**", "/v3/api-docs.yaml"
                 ).permitAll()
+                // 健康检查
                 .requestMatchers("/api/insurance/health").permitAll()
+                // 业务 API — 需要认证
                 .requestMatchers("/api/chat/**").authenticated()
+                .requestMatchers("/api/assistant/**").authenticated()
                 .requestMatchers("/api/insurance/**").authenticated()
                 .anyRequest().authenticated()
             )
