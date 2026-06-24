@@ -44,6 +44,12 @@ public class ChatService {
     /** 对话历史最大保留轮数 */
     private static final int MAX_HISTORY_TURNS = 20;
 
+    /** 保留完整对话内容的最近轮数（超过的轮次仅保留用户问题摘要） */
+    private static final int FULL_TURNS = 5;
+
+    /** 历史上下文的近似 token 上限（按 4 字符 ≈ 1 token 估算） */
+    private static final int HISTORY_CHAR_BUDGET = 6000;
+
     /** Agent 流程超时时间（秒），超过此时间视为卡住 */
     private static final long PROCESS_TIMEOUT_SECONDS = 120;
 
@@ -116,8 +122,7 @@ public class ChatService {
         if (session.history.isEmpty()) {
             enrichedMessage = message;
         } else {
-            String history = String.join("\n", session.history);
-            enrichedMessage = "Conversation history:\n" + history + "\n\nNew question: " + message;
+            enrichedMessage = buildEnrichedMessage(session.history, message);
         }
 
         try {
@@ -147,10 +152,7 @@ public class ChatService {
             // 更新对话历史并截断，防止无限制增长
             session.history.add("User: " + message);
             session.history.add("Bot: " + output.response());
-            while (session.history.size() > MAX_HISTORY_TURNS * 2) {
-                session.history.remove(0);
-                session.history.remove(0);
-            }
+            trimHistory(session.history);
 
             // 缓存首次对话的 LLM 响应
             if (session.history.size() <= 2) { // 刚加了 User/Bot 两条
@@ -170,6 +172,93 @@ public class ChatService {
                     session.id, isNewSession, LocalDateTime.now()
             );
         }
+    }
+
+    /**
+     * 构建增强消息：最近 FULL_TURNS 轮完整保留，更早的浓缩为用户问题摘要。
+     */
+    private String buildEnrichedMessage(List<String> history, String newMessage) {
+        int totalPairs = history.size() / 2; // User + Bot = 1 轮
+
+        if (totalPairs <= FULL_TURNS) {
+            // 轮次不多，全部保留
+            String fullHistory = String.join("\n", history);
+            return "Conversation history:\n" + fullHistory + "\n\nNew question: " + newMessage;
+        }
+
+        // 分离最近轮次和早期轮次
+        int recentStart = history.size() - FULL_TURNS * 2;
+        List<String> recentHistory = history.subList(recentStart, history.size());
+        List<String> earlyHistory = history.subList(0, recentStart);
+
+        // 早期轮次：只提取用户问题，去掉 Bot 回复
+        StringBuilder earlySummary = new StringBuilder("Earlier conversation summary:\n");
+        for (int i = 0; i < earlyHistory.size(); i += 2) {
+            String userMsg = earlyHistory.get(i);
+            if (userMsg.startsWith("User: ")) {
+                earlySummary.append("- ").append(userMsg.substring(6)).append("\n");
+            }
+        }
+        earlySummary.append("\n");
+
+        // 最近轮次：完整保留
+        String recentText = String.join("\n", recentHistory);
+
+        return earlySummary + "Recent conversation:\n" + recentText + "\n\nNew question: " + newMessage;
+    }
+
+    /**
+     * 智能截断历史记录：保留最近 FULL_TURNS 轮完整 + 更早的用户问题摘要，
+     * 且在总字符数超过 HISTORY_CHAR_BUDGET 时进一步压缩。
+     */
+    private void trimHistory(List<String> history) {
+        int totalPairs = history.size() / 2;
+        if (totalPairs <= MAX_HISTORY_TURNS) {
+            // 还没到上限，先不截断
+            return;
+        }
+
+        // 计算总字符数，如果超出预算则压缩
+        int totalChars = 0;
+        for (String h : history) {
+            totalChars += h.length();
+        }
+
+        if (totalChars <= HISTORY_CHAR_BUDGET && totalPairs <= MAX_HISTORY_TURNS + 5) {
+            // 字符数和轮数都在合理范围，只截断到 MAX_HISTORY_TURNS
+            while (history.size() > MAX_HISTORY_TURNS * 2) {
+                history.remove(0);
+                history.remove(0);
+            }
+            return;
+        }
+
+        // 超出预算或轮数过多：保留最近 FULL_TURNS 轮完整，更早的浓缩为用户问题
+        int recentStart = history.size() - FULL_TURNS * 2;
+        if (recentStart <= 0) {
+            // 不足 FULL_TURNS 轮，只按 MAX_HISTORY_TURNS 截断
+            while (history.size() > MAX_HISTORY_TURNS * 2) {
+                history.remove(0);
+                history.remove(0);
+            }
+            return;
+        }
+
+        // 提取更早轮次中的用户问题
+        List<String> earlyUserMessages = new java.util.ArrayList<>();
+        for (int i = 0; i < recentStart; i += 2) {
+            String userMsg = history.get(i);
+            if (userMsg.startsWith("User: ")) {
+                earlyUserMessages.add(userMsg);
+            }
+        }
+
+        // 先保存最近完整轮次
+        List<String> recentHistory = new java.util.ArrayList<>(history.subList(recentStart, history.size()));
+        // 重建历史：早期用户问题 + 最近完整轮次
+        history.clear();
+        history.addAll(earlyUserMessages);
+        history.addAll(recentHistory);
     }
 
     /**
