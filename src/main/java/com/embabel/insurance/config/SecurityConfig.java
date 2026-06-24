@@ -8,6 +8,8 @@ import org.springframework.security.access.expression.method.DefaultMethodSecuri
 import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -19,6 +21,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
  * Spring Security 安全配置。
@@ -49,7 +52,8 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   JwtAuthenticationFilter jwtFilter) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
@@ -60,6 +64,8 @@ public class SecurityConfig {
                         "/swagger-ui/**", "/swagger-ui.html",
                         "/v3/api-docs/**", "/v3/api-docs.yaml"
                 ).permitAll()
+                // 登录接口（无需认证）
+                .requestMatchers("/api/auth/login").permitAll()
                 // 健康检查 + Actuator
                 .requestMatchers("/api/insurance/health").permitAll()
                 .requestMatchers("/actuator/health", "/actuator/metrics", "/actuator/prometheus").permitAll()
@@ -69,6 +75,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/insurance/**").authenticated()
                 .anyRequest().authenticated()
             )
+            // JWT 过滤器优先于 HTTP Basic
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
             .httpBasic(httpBasic -> httpBasic
                     .authenticationEntryPoint((request, response, authException) -> {
                         response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
@@ -76,6 +84,11 @@ public class SecurityConfig {
             );
 
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
     }
 
     @Bean

@@ -431,17 +431,39 @@ function typeMessage(role, fullText, type, actions, callback) {
     return div;
 }
 
-// ── 登录 ──
-loginBtn.addEventListener('click', () => {
+// ── 登录（JWT） ──
+loginBtn.addEventListener('click', async () => {
     const user = loginUser.value.trim();
     const pass = loginPass.value.trim();
     if (!user || !pass) return;
 
-    authHeader = 'Basic ' + btoa(user + ':' + pass);
-    loginError.style.display = 'none';
-    loginOverlay.style.display = 'none';
-    addMessage('assistant', '登录成功！请告诉我您需要什么帮助？', 'chat');
-    inputEl.focus();
+    loginBtn.disabled = true;
+    loginBtn.textContent = '登录中...';
+
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass }),
+        });
+        const data = await res.json();
+        if (res.ok && data.token) {
+            authHeader = 'Bearer ' + data.token;
+            loginError.style.display = 'none';
+            loginOverlay.style.display = 'none';
+            addMessage('assistant', '登录成功！请告诉我您需要什么帮助？', 'chat');
+            inputEl.focus();
+        } else {
+            loginError.textContent = data.error || '用户名或密码错误';
+            loginError.style.display = 'block';
+        }
+    } catch (err) {
+        loginError.textContent = '无法连接服务器';
+        loginError.style.display = 'block';
+    } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = '登录';
+    }
 });
 loginUser.addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click(); });
 loginPass.addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click(); });
