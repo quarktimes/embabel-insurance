@@ -154,7 +154,9 @@
       "Bash(python3 -c ' *)",
       "Bash(curl -s -c /tmp/grafana_cookie3 -X POST http://localhost:4000/login -H 'Content-Type: application/json' -d '{\"user\":\"admin\",\"password\":\"admin\"}')",
       "Bash(curl -s -b /tmp/grafana_cookie3 \"http://localhost:4000/api/datasources/proxy/uid/PBFA97CFB590B2093/api/v1/query?query=up\")",
-      "Bash(git stash *)",
+      "Bash(sed -i '' 's/MAX_CONTENT_LENGTH = 10_000/MAX_CONTENT_LENGTH = 5_000/' /Users/dehualiu/Documents/project/aiproject/embabel-insurance/src/main/java/com/embabel/insurance/guardrail/InputValidationFilter.java)",
+      "Bash(sed -i '' 's/MAX_BODY_CHARS = 10_000/MAX_BODY_CHARS = 5_000/' /Users/dehualiu/Documents/project/aiproject/embabel-insurance/src/main/java/com/embabel/insurance/guardrail/InputValidationFilter.java)",
+      "Bash(./mvnw clean *)",
       "Bash(git pull *)",
       "Bash(git merge *)"
     ],
