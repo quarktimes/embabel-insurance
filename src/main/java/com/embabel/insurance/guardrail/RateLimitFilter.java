@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.env.Environment;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,7 @@ import java.io.IOException;
  *
  * <p>在请求到达 Controller 之前检查限流。超过限制的请求返回 429 Too Many Requests。
  * 仅对 /api/** 路径生效，静态资源和 Actuator 不受限。
+ * test/e2e profile 下自动跳过。
  */
 @Component
 @Order(1)
@@ -27,15 +29,23 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final Logger logger = LoggerFactory.getLogger(RateLimitFilter.class);
 
     private final RateLimitingService rateLimitingService;
+    private final Environment environment;
 
-    public RateLimitFilter(RateLimitingService rateLimitingService) {
+    public RateLimitFilter(RateLimitingService rateLimitingService, Environment environment) {
         this.rateLimitingService = rateLimitingService;
+        this.environment = environment;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+
+        // test/e2e profile 跳过限流
+        if (isTestProfile()) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         String path = request.getRequestURI();
 
@@ -58,6 +68,20 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * 判断当前是否处于 test 或 e2e profile。
+     */
+    private boolean isTestProfile() {
+        if (environment == null) return false;
+        String[] activeProfiles = environment.getActiveProfiles();
+        for (String p : activeProfiles) {
+            if ("test".equals(p) || "e2e".equals(p)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
