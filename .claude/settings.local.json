@@ -153,7 +153,10 @@
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('status','FAIL'\\), '-', len\\(d.get\\('data',{}\\).get\\('result',[]\\)\\), 'results'\\)\")",
       "Bash(python3 -c ' *)",
       "Bash(curl -s -c /tmp/grafana_cookie3 -X POST http://localhost:4000/login -H 'Content-Type: application/json' -d '{\"user\":\"admin\",\"password\":\"admin\"}')",
-      "Bash(curl -s -b /tmp/grafana_cookie3 \"http://localhost:4000/api/datasources/proxy/uid/PBFA97CFB590B2093/api/v1/query?query=up\")"
+      "Bash(curl -s -b /tmp/grafana_cookie3 \"http://localhost:4000/api/datasources/proxy/uid/PBFA97CFB590B2093/api/v1/query?query=up\")",
+      "Bash(git stash *)",
+      "Bash(git pull *)",
+      "Bash(git merge *)"
     ],
     "additionalDirectories": [
       "/private/tmp/ch_migrations"
