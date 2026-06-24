@@ -30,6 +30,20 @@ public class InsuranceAssistantMessageGuardRail {
             "private key"
     );
 
+    /** 保险合规：禁止 LLM 承诺/保证赔付 */
+    private static final List<String> COMPLIANCE_PROHIBITED = List.of(
+            "保证理赔", "保证赔付", "保证赔偿",
+            "100%赔付", "100%理赔", "百份百赔付",
+            "一定赔", "一定赔付", "一定能赔",
+            "包赔", "包理赔", "包赔付",
+            "肯定能赔", "肯定赔", "肯定理赔",
+            "绝对理赔", "绝对赔付", "绝对能赔",
+            "无条件赔付", "无条件理赔",
+            "承诺赔付", "承诺理赔", "承诺赔偿",
+            "担保理赔", "担保赔付",
+            "必赔", "必赔付"
+    );
+
     /** 幻觉迹象关键词 */
     private static final List<String> HALLUCINATION_INDICATORS = List.of(
             "i'm not sure",
@@ -94,7 +108,19 @@ public class InsuranceAssistantMessageGuardRail {
                 ));
             }
         }
-        
+
+        // 检查保险合规：禁止承诺/保证赔付
+        for (String phrase : COMPLIANCE_PROHIBITED) {
+            if (text.contains(phrase)) {
+                errors.add(new ValidationError(
+                        "compliance-prohibited-commitment",
+                        "回复包含保险合规禁止的承诺表述: " + phrase,
+                        ValidationSeverity.ERROR,
+                        location
+                ));
+            }
+        }
+
         // 检查幻觉迹象
         for (String indicator : HALLUCINATION_INDICATORS) {
             if (textLower.contains(indicator)) {
