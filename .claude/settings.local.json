@@ -103,7 +103,27 @@
       "Bash(./mvnw test-compile *)",
       "Bash(grep -A5 \"error\\\\|failure\" /Users/dehualiu/Documents/project/aiproject/embabel-insurance/target/surefire-reports/TEST-com.embabel.insurance.agent.ChatbotAgentTest\\\\$AnswerQuestionTests.xml 2>/dev/null | head -20)",
       "Read(//Users/dehualiu/Documents/project/aiproject/embabel-insurance/target/surefire-reports/**)",
-      "Bash(grep -o 'Unresolved compilation problem[^<]*' /Users/dehualiu/Documents/project/aiproject/embabel-insurance/target/surefire-reports/TEST-com.embabel.insurance.agent.ChatbotAgentTest\\\\$AnswerQuestionTests.xml 2>/dev/null | head -5 *)"
+      "Bash(grep -o 'Unresolved compilation problem[^<]*' /Users/dehualiu/Documents/project/aiproject/embabel-insurance/target/surefire-reports/TEST-com.embabel.insurance.agent.ChatbotAgentTest\\\\$AnswerQuestionTests.xml 2>/dev/null | head -5 *)",
+      "Bash(docker info *)",
+      "Bash(HTTP_PROXY= HTTPS_PROXY= docker pull qdrant/qdrant:latest)",
+      "Bash(docker compose *)",
+      "Bash(pg_isready)",
+      "Bash(psql -l)",
+      "Bash(brew list *)",
+      "Read(//opt/homebrew/var/**)",
+      "Bash(brew install *)",
+      "Bash(rm -rf /tmp/ch_migrations)",
+      "Bash(javap -p io/opentelemetry/exporter/otlp/trace/OtlpGrpcSpanExporter.class)",
+      "Bash(javap -p io/opentelemetry/sdk/OpenTelemetrySdk.class)",
+      "Bash(javap -p io/opentelemetry/sdk/trace/SdkTracerProvider.class)",
+      "Bash(javap -p io/opentelemetry/exporter/otlp/trace/OtlpGrpcSpanExporterBuilder.class)",
+      "Bash(javap -p io/opentelemetry/sdk/OpenTelemetrySdkBuilder.class)",
+      "Bash(javap -p io/opentelemetry/sdk/trace/SdkTracerProviderBuilder.class)",
+      "Bash(javap -p io/opentelemetry/sdk/trace/export/BatchSpanProcessor.class)",
+      "Bash(javap -p io/opentelemetry/sdk/trace/export/BatchSpanProcessorBuilder.class)"
+    ],
+    "additionalDirectories": [
+      "/private/tmp/ch_migrations"
     ]
   }
 }

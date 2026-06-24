@@ -7,16 +7,88 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=langfuse
+      - POSTGRES_PASSWORD=langfuse
+      - POSTGRES_DB=langfuse
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  zookeeper:
+    image: zookeeper:3.8
+    ports:
+      - "2181:2181"
+    healthcheck:
+      test: ["CMD", "zkServer.sh", "status"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24-alpine
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      - CLICKHOUSE_DB=langfuse
+      - CLICKHOUSE_USER=langfuse
+      - CLICKHOUSE_PASSWORD=langfuse
+    ports:
+      - "8123:8123"   # HTTP
+      - "9000:9000"   # Native
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./docker/clickhouse/cluster.xml:/etc/clickhouse-server/config.d/cluster.xml
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client -u langfuse --password langfuse --query 'SELECT 1'"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   langfuse:
     image: langfuse/langfuse:latest
     ports:
       - "3000:3000"
     environment:
+      - DATABASE_URL=postgresql://langfuse:langfuse@postgres:5432/langfuse
+      - CLICKHOUSE_URL=http://langfuse:langfuse@clickhouse:8123/langfuse
+      - CLICKHOUSE_MIGRATION_URL=clickhouse://langfuse:langfuse@clickhouse:9000/langfuse
+      - CLICKHOUSE_USER=langfuse
+      - CLICKHOUSE_PASSWORD=langfuse
+      - NEXTAUTH_SECRET=langfuse-dev-secret-key-change-in-production
+      - NEXTAUTH_URL=http://localhost:3000
+      - SALT=langfuse-dev-salt-change-in-production
       - LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES=true
       - NODE_ENV=production
+      - LANGFUSE_S3_EVENT_UPLOAD_BUCKET=local-dev
+      - LANGFUSE_S3_EVENT_UPLOAD_REGION=us-east-1
+      - LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID=minioadmin
+      - LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY=minioadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "4000:3000"
     volumes:
-      - langfuse_data:/data
+      - ./docker/grafana/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
+      - grafana_data:/var/lib/grafana
 
 volumes:
   qdrant_data:
-  langfuse_data:
+  postgres_data:
+  clickhouse_data:
+  grafana_data:

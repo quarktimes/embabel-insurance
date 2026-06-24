@@ -38,7 +38,7 @@ embabel:
   # 开启方式：将 enabled 改为 true，取消 management 段注释
   # ============================================================
   observability:
-    enabled: true
+    enabled: false   # 使用 management.actuator + prometheus 替代，避免与 MySQL OTEL 冲突
     service-name: SmartInsurancePlatform
 
 insurance:
@@ -79,15 +79,6 @@ management:
     metrics:
       export:
         enabled: true
-  tracing:
-    enabled: true
-    sampling:
-      probability: 1.0
-  langfuse:
-    enabled: true
-    endpoint: ${LANGFUSE_ENDPOINT:http://localhost:3000/api/public/otel}
-    public-key: ${LANGFUSE_PUBLIC_KEY:}
-    secret-key: ${LANGFUSE_SECRET_KEY:}
 
 logging:
   level:
