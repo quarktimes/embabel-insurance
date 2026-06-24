@@ -50,16 +50,19 @@ public class ChatService {
     private final AgentPlatform agentPlatform;
     private final ChatbotAgent chatbotAgentBean;
     private final InsuranceUserInputGuardRailImpl userInputGuardRail;
+    private final CacheService cacheService;
 
     /** 用户会话映射：userId → (sessionId → SessionRecord) */
     private final Map<String, Map<String, SessionRecord>> userSessions = new ConcurrentHashMap<>();
 
     public ChatService(AgentPlatform agentPlatform,
                        ChatbotAgent chatbotAgentBean,
-                       InsuranceUserInputGuardRailImpl userInputGuardRail) {
+                       InsuranceUserInputGuardRailImpl userInputGuardRail,
+                       CacheService cacheService) {
         this.agentPlatform = agentPlatform;
         this.chatbotAgentBean = chatbotAgentBean;
         this.userInputGuardRail = userInputGuardRail;
+        this.cacheService = cacheService;
     }
 
     /**
@@ -94,6 +97,18 @@ public class ChatService {
                     "您的问题包含不被允许的内容，请重新表述。",
                     session.id, isNewSession, LocalDateTime.now()
             );
+        }
+
+        // 缓存检查：仅首次对话（无历史）使用缓存
+        if (session.history.isEmpty()) {
+            String normalizedKey = message.trim().toLowerCase();
+            String cached = cacheService.getCachedLlmResponse(normalizedKey);
+            if (cached != null) {
+                logger.info("LLM cache hit for: {}", message.length() > 50 ? message.substring(0, 50) + "..." : message);
+                session.history.add("User: " + message);
+                session.history.add("Bot: " + cached);
+                return new ChatResponse(cached, session.id, isNewSession, LocalDateTime.now());
+            }
         }
 
         // 构建包含对话历史的增强消息
@@ -135,6 +150,12 @@ public class ChatService {
             while (session.history.size() > MAX_HISTORY_TURNS * 2) {
                 session.history.remove(0);
                 session.history.remove(0);
+            }
+
+            // 缓存首次对话的 LLM 响应
+            if (session.history.size() <= 2) { // 刚加了 User/Bot 两条
+                String normalizedKey = message.trim().toLowerCase();
+                cacheService.cacheLlmResponse(normalizedKey, output.response());
             }
 
             logger.info("Chat response generated for session {} (length={})",
