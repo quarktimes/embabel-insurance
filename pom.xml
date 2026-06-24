@@ -147,6 +147,13 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Bucket4j 速率限制 -->
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j-core</artifactId>
+            <version>8.10.1</version>
+        </dependency>
+
 <!-- SpringDoc OpenAPI for Swagger UI (3.0.x for Spring Boot 4.x) -->
         <dependency>
             <groupId>org.springdoc</groupId>
