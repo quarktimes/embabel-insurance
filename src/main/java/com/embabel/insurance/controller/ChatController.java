@@ -50,29 +50,18 @@ public class ChatController {
             @Parameter(description = "会话 ID（首次调用时不需要传，后续调用请携带上一次返回的 sessionId）")
             @RequestParam(required = false) String sessionId) {
 
-        try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            String userId = auth.getName();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String userId = auth.getName();
 
-            logger.info("Processing chat for user: {}, session: {}", userId, sessionId);
+        logger.info("Processing chat for user: {}, session: {}", userId, sessionId);
 
-            ChatResponse response = chatService.processChat(
-                    userId,
-                    request.getMessage(),
-                    sessionId
-            );
+        ChatResponse response = chatService.processChat(
+                userId,
+                request.getMessage(),
+                sessionId
+        );
 
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            logger.error("Error processing chat request", e);
-            return ResponseEntity.internalServerError().body(
-                    new ChatResponse(
-                            "I'm sorry, I couldn't process your request at this time.",
-                            null, false, java.time.LocalDateTime.now()
-                    )
-            );
-        }
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "清除会话", description = "清除当前用户的指定聊天会话")

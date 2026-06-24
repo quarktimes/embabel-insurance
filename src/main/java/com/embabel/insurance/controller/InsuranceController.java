@@ -75,8 +75,7 @@ public class InsuranceController {
     public ResponseEntity<?> underwrite(
             @RequestBody @Schema(description = "核保请求", implementation = UnderwritingRequest.class)
             UnderwritingRequest request) {
-        try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             // 优先使用请求体中的业务 userId，回退到认证用户名
             String userId = (request.getUserId() != null && !request.getUserId().isBlank())
                     ? request.getUserId()
@@ -102,16 +101,7 @@ public class InsuranceController {
                         .body(response.getMessage());
             }
 
-            return ResponseEntity.ok(response);
-
-        } catch (IllegalArgumentException e) {
-            logger.warn("Invalid request: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(e.getMessage());
-        } catch (Exception e) {
-            logger.error("Error processing underwriting request", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(e.getMessage() != null ? e.getMessage() : "An error occurred while processing your request");
-        }
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "提交理赔申请", description = "根据保单号和事故描述提交理赔申请，通过 ClaimsAgent 进行智能欺诈检测和自动路由")
@@ -124,57 +114,48 @@ public class InsuranceController {
     @PostMapping("/claims")
     @PreAuthorize("hasAuthority('claims:write')")
     public ResponseEntity<?> fileClaim(@RequestBody @Valid ClaimRequest request) {
-        try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            String userId = auth.getName();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String userId = auth.getName();
 
-            logger.info("Processing claim request for user: {}, policy: {}", userId, request.getPolicyNumber());
+        logger.info("Processing claim request for user: {}, policy: {}", userId, request.getPolicyNumber());
 
-            // 校验保单是否存在
-            Optional<Policy> policyOpt = policyRepository.findByPolicyNumber(request.getPolicyNumber());
-            if (policyOpt.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("Policy not found: " + request.getPolicyNumber());
-            }
+        // 校验保单是否存在
+        Optional<Policy> policyOpt = policyRepository.findByPolicyNumber(request.getPolicyNumber());
+        if (policyOpt.isEmpty()) {
+            throw new RuntimeException("Policy not found: " + request.getPolicyNumber());
+        }
 
-            // 构建 ClaimsAgent 所需的结构化输入
-            String userInput = String.format(
-                    "policy=%s description=%s amount=%.0f",
-                    request.getPolicyNumber(),
-                    request.getDescription(),
-                    request.getClaimedAmount()
-            );
+        // 构建 ClaimsAgent 所需的结构化输入
+        String userInput = String.format(
+                "policy=%s description=%s amount=%.0f",
+                request.getPolicyNumber(),
+                request.getDescription(),
+                request.getClaimedAmount()
+        );
 
-            // 通过 Agent 处理（Utility 规划器 → @State 路由）
-            ClaimsAgent.ClaimResult result = agentService.processClaim(userInput);
+        // 通过 Agent 处理（Utility 规划器 → @State 路由）
+        ClaimsAgent.ClaimResult result = agentService.processClaim(userInput);
 
-            // @State 路由返回的错误状态 — 返回 422 并附带错误消息
-            if ("ERROR".equals(result.claimStatus())) {
-                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                        .body(result.message());
-            }
+        // @State 路由返回的错误状态 — 返回 422 并附带错误消息
+        if ("ERROR".equals(result.claimStatus())) {
+            throw new IllegalArgumentException(result.message());
+        }
 
-            double paidAmount = "APPROVED".equals(result.claimStatus()) ? result.approvedAmount() : 0.0;
+        double paidAmount = "APPROVED".equals(result.claimStatus()) ? result.approvedAmount() : 0.0;
 
-            ClaimResponse response = new ClaimResponse(
-                    result.claimNumber(),
-                    request.getPolicyNumber(),
-                    result.claimStatus(),
-                    request.getClaimedAmount(),
-                    paidAmount,
-                    result.fraudScore(),
+        ClaimResponse response = new ClaimResponse(
+                result.claimNumber(),
+                request.getPolicyNumber(),
+                result.claimStatus(),
+                request.getClaimedAmount(),
+                paidAmount,
+                result.fraudScore(),
                     request.getDescription(),
                     java.time.LocalDateTime.now(),
                     result.message()
             );
 
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            logger.error("Error processing claim request", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("An error occurred while processing your claim: " + e.getMessage());
-        }
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "获取保单列表", description = "获取指定用户的所有保单信息。不传 userId 时默认为当前认证用户。")
@@ -185,21 +166,14 @@ public class InsuranceController {
     public ResponseEntity<?> getPolicies(
             @Parameter(description = "用户 ID（可选），不传则使用当前认证用户", example = "low-risk-user")
             @RequestParam(required = false) String userId) {
-        try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            String effectiveUserId = (userId != null && !userId.isBlank()) ? userId : auth.getName();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String effectiveUserId = (userId != null && !userId.isBlank()) ? userId : auth.getName();
 
-            logger.info("Fetching policies for user: {} (auth: {})", effectiveUserId, auth.getName());
+        logger.info("Fetching policies for user: {} (auth: {})", effectiveUserId, auth.getName());
 
-            List<PolicyResponse> policies = policyService.getPoliciesByUserId(effectiveUserId);
+        List<PolicyResponse> policies = policyService.getPoliciesByUserId(effectiveUserId);
 
-            return ResponseEntity.ok(policies);
-
-        } catch (Exception e) {
-            logger.error("Error fetching policies", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("An error occurred while fetching your policies");
-        }
+        return ResponseEntity.ok(policies);
     }
 
     @Operation(summary = "获取单个保单", description = "根据保单号获取保单详细信息")
@@ -213,8 +187,7 @@ public class InsuranceController {
     public ResponseEntity<?> getPolicy(
             @Parameter(description = "保单号", example = "POL-1234567890")
             @PathVariable String policyNumber) {
-        try {
-            logger.info("Fetching policy: {}", policyNumber);
+        logger.info("Fetching policy: {}", policyNumber);
 
             Optional<PolicyResponse> policy = policyService.getPolicyByNumber(policyNumber);
 
@@ -224,12 +197,6 @@ public class InsuranceController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body("Policy not found");
             }
-
-        } catch (Exception e) {
-            logger.error("Error fetching policy", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("An error occurred while fetching the policy");
-        }
     }
 
     @Operation(summary = "人工审批 REFERRED 报价单", description = "核保员对状态为 REFERRED 的报价单进行人工审批，审批后报价单转为 APPROVED 状态，用户可继续支付。仅 REFERRED 状态的报价单可被审批。")
@@ -246,8 +213,7 @@ public class InsuranceController {
             @Parameter(description = "报价单 ID", example = "1")
             @PathVariable Long quoteId,
             @RequestBody(required = false) ApproveQuoteRequest request) {
-        try {
-            logger.info("Processing manual approval for quote #{}", quoteId);
+        logger.info("Processing manual approval for quote #{}", quoteId);
 
             Double premiumAmount = (request != null) ? request.getPremiumAmount() : null;
             String comment = (request != null) ? request.getComment() : null;
@@ -256,18 +222,7 @@ public class InsuranceController {
 
             return ResponseEntity.ok(response);
 
-        } catch (RuntimeException e) {
-            if (e.getMessage() != null && e.getMessage().contains("not found")) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-            }
-            if (e.getMessage() != null && (e.getMessage().contains("Only REFERRED") ||
-                    e.getMessage().contains("expired"))) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-            }
-            logger.error("Error approving quote #{}", quoteId, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Approval processing failed: " + e.getMessage());
-        }
+
     }
 
     @Operation(summary = "人工审核理赔单", description = "理赔审核员对状态为 INVESTIGATING 的理赔单进行人工审核（批准或拒绝）。审核结果即为终态，无需再次提交理赔。")
@@ -284,8 +239,7 @@ public class InsuranceController {
             @Parameter(description = "理赔单号", example = "CLM-C1E3A50")
             @PathVariable String claimNumber,
             @RequestBody @Valid ReviewClaimRequest request) {
-        try {
-            logger.info("Processing manual review for claim {}: decision={}", claimNumber, request.getDecision());
+        logger.info("Processing manual review for claim {}: decision={}", claimNumber, request.getDecision());
 
             ReviewClaimResponse response = agentService.reviewClaim(
                     claimNumber,
@@ -296,18 +250,7 @@ public class InsuranceController {
 
             return ResponseEntity.ok(response);
 
-        } catch (RuntimeException e) {
-            if (e.getMessage() != null && e.getMessage().contains("not found")) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-            }
-            if (e.getMessage() != null && (e.getMessage().contains("Only INVESTIGATING") ||
-                    e.getMessage().contains("Decision must be"))) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-            }
-            logger.error("Error reviewing claim {}", claimNumber, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Claim review processing failed: " + e.getMessage());
-        }
+
     }
 
     @Operation(summary = "支付保费并签发保单", description = "根据已批准的报价单 ID 支付保费，自动签发正式保单并返回保单号")
@@ -322,8 +265,7 @@ public class InsuranceController {
     @PreAuthorize("hasAuthority('underwriting:write')")
     public ResponseEntity<?> payAndIssuePolicy(
             @RequestBody @Valid PayRequest request) {
-        try {
-            logger.info("Processing payment for quote #{} via {}",
+        logger.info("Processing payment for quote #{} via {}",
                     request.getQuoteId(), request.getPaymentMethod());
 
             Policy policy = paymentService.payAndIssuePolicy(
@@ -341,18 +283,7 @@ public class InsuranceController {
 
             return ResponseEntity.ok(response);
 
-        } catch (RuntimeException e) {
-            if (e.getMessage() != null && e.getMessage().contains("not found")) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-            }
-            if (e.getMessage() != null && (e.getMessage().contains("not approved") ||
-                    e.getMessage().contains("expired"))) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-            }
-            logger.error("Error processing payment", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Payment processing failed: " + e.getMessage());
-        }
+
     }
 
     @Operation(summary = "健康检查", description = "检查保险 API 服务是否正常运行")
