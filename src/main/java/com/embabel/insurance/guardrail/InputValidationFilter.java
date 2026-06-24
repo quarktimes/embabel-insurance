@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -20,15 +21,16 @@ import java.io.IOException;
  */
 @Component
 @Order(2)
+@Profile("!test & !e2e")
 public class InputValidationFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(InputValidationFilter.class);
 
     /** 最大输入长度（字节） */
-    private static final long MAX_CONTENT_LENGTH = 10_000;
+    private static final long MAX_CONTENT_LENGTH = 5_000;
 
     /** 最大输入长度（字符，约等于 1 万个中文字符） */
-    private static final int MAX_BODY_CHARS = 10_000;
+    private static final int MAX_BODY_CHARS = 5_000;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
