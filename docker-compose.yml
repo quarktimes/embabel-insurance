@@ -7,5 +7,16 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
+  langfuse:
+    image: langfuse/langfuse:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES=true
+      - NODE_ENV=production
+    volumes:
+      - langfuse_data:/data
+
 volumes:
   qdrant_data:
+  langfuse_data:

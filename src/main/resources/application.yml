@@ -38,7 +38,7 @@ embabel:
   # 开启方式：将 enabled 改为 true，取消 management 段注释
   # ============================================================
   observability:
-    enabled: false
+    enabled: true
     service-name: SmartInsurancePlatform
 
 insurance:
@@ -67,32 +67,27 @@ server:
   port: 8080
 
 # ============================================================
-# 可观测性 — Management & Langfuse（默认注释，按需开启）
-# 使用方法：
-#   1. 取消下方整段注释
-#   2. 将 embabel.observability.enabled 改为 true
-#   3. 如需 Langfuse：启动本地服务或使用云版，设置环境变量
-#      export LANGFUSE_PUBLIC_KEY=pk-xxx
-#      export LANGFUSE_SECRET_KEY=sk-xxx
+# 可观测性 — Actuator + Prometheus（已开启）
+# Langfuse 按需取消注释并设置 LANGFUSE_* 环境变量
 # ============================================================
-#management:
-#  endpoints:
-#    web:
-#      exposure:
-#        include: prometheus,health,metrics
-#  prometheus:
-#    metrics:
-#      export:
-#        enabled: true
-#  tracing:
-#    enabled: true
-#    sampling:
-#      probability: 1.0
-#  langfuse:
-#    enabled: true
-#    endpoint: http://localhost:3000/api/public/otel
-#    public-key: ${LANGFUSE_PUBLIC_KEY}
-#    secret-key: ${LANGFUSE_SECRET_KEY}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus,health,metrics
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+  langfuse:
+    enabled: true
+    endpoint: ${LANGFUSE_ENDPOINT:http://localhost:3000/api/public/otel}
+    public-key: ${LANGFUSE_PUBLIC_KEY:}
+    secret-key: ${LANGFUSE_SECRET_KEY:}
 
 logging:
   level:

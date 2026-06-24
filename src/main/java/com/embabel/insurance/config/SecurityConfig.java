@@ -60,8 +60,9 @@ public class SecurityConfig {
                         "/swagger-ui/**", "/swagger-ui.html",
                         "/v3/api-docs/**", "/v3/api-docs.yaml"
                 ).permitAll()
-                // 健康检查
+                // 健康检查 + Actuator
                 .requestMatchers("/api/insurance/health").permitAll()
+                .requestMatchers("/actuator/health", "/actuator/metrics", "/actuator/prometheus").permitAll()
                 // 业务 API — 需要认证
                 .requestMatchers("/api/chat/**").authenticated()
                 .requestMatchers("/api/assistant/**").authenticated()
