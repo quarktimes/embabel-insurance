@@ -158,7 +158,8 @@
       "Bash(sed -i '' 's/MAX_BODY_CHARS = 10_000/MAX_BODY_CHARS = 5_000/' /Users/dehualiu/Documents/project/aiproject/embabel-insurance/src/main/java/com/embabel/insurance/guardrail/InputValidationFilter.java)",
       "Bash(./mvnw clean *)",
       "Bash(git pull *)",
-      "Bash(git merge *)"
+      "Bash(git merge *)",
+      "Bash(grep -n \"class\\\\|}\\\\s*$\" /Users/dehualiu/Documents/project/aiproject/embabel-insurance/src/main/java/com/embabel/insurance/config/DataInitializer.java)"
     ],
     "additionalDirectories": [
       "/private/tmp/ch_migrations"

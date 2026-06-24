@@ -1,14 +1,18 @@
 package com.embabel.insurance.config;
 
+import com.embabel.insurance.entity.AppUser;
 import com.embabel.insurance.entity.Customer;
 import com.embabel.insurance.entity.Vehicle;
+import com.embabel.insurance.repository.AppUserRepository;
 import com.embabel.insurance.repository.CustomerRepository;
 import com.embabel.insurance.repository.VehicleRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 演示数据初始化器，在应用启动时自动插入测试用的客户和车辆数据。
@@ -112,6 +116,36 @@ public class DataInitializer {
                 vehicleRepository.save(new Vehicle(
                         "京B99999", "Model 3", "Tesla",
                         2022, 450_000, legacyAdmin
+                ));
+            }
+        };
+    }
+
+    /**
+     * 初始化测试用户到 app_users 表（替代 SecurityConfig 的硬编码）。
+     */
+    @Bean
+    public CommandLineRunner initUsers(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder) {
+        return args -> {
+            if (appUserRepository.count() == 0) {
+                appUserRepository.saveAll(List.of(
+                        new AppUser("user", passwordEncoder.encode("password"), "USER",
+                                List.of("underwriting:read", "chat:use", "policies:read")),
+                        new AppUser("underwriter", passwordEncoder.encode("underwriter"), "UNDERWRITER",
+                                List.of("underwriting:write", "underwriting:approve", "underwriting:read", "chat:use", "policies:read")),
+                        new AppUser("claims", passwordEncoder.encode("claims"), "CLAIMS",
+                                List.of("claims:write", "claims:read", "claims:review", "chat:use", "policies:read")),
+                        new AppUser("admin", passwordEncoder.encode("admin"), "ADMIN",
+                                List.of("underwriting:write", "underwriting:approve", "underwriting:read",
+                                        "claims:write", "claims:read", "claims:review",
+                                        "policies:write", "policies:read",
+                                        "chat:use", "chat:admin", "rag:admin")),
+                        new AppUser("low-risk-user", passwordEncoder.encode("password"), "USER",
+                                List.of("underwriting:write", "underwriting:read", "policies:read", "chat:use")),
+                        new AppUser("medium-risk-user", passwordEncoder.encode("password"), "USER",
+                                List.of("underwriting:write", "underwriting:read", "policies:read", "chat:use")),
+                        new AppUser("high-risk-user", passwordEncoder.encode("password"), "USER",
+                                List.of("underwriting:write", "underwriting:read", "policies:read", "chat:use"))
                 ));
             }
         };

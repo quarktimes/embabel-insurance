@@ -14,12 +14,8 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -34,16 +30,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *   <li>Swagger 文档页面和健康检查端点免认证访问</li>
  * </ul>
  *
- * <p>测试用户：
- * <ul>
- *   <li>low-risk-user / password — 低风险用户，核保自动通过</li>
- *   <li>medium-risk-user / password — 中风险用户，核保转人工</li>
- *   <li>high-risk-user / password — 高风险用户，核保拒绝</li>
- *   <li>user / password — USER 角色，可使用聊天和查看保单</li>
- *   <li>underwriter / underwriter — UNDERWRITER 角色，可处理核保和审批报价单</li>
- *   <li>claims / claims — CLAIMS 角色，可处理理赔和审核理赔单</li>
- *   <li>admin / admin — ADMIN 角色，拥有全部权限</li>
- * </ul>
+ * <p>用户数据存储在 MySQL 的 app_users 表中，
+ * 由 {@link com.embabel.insurance.service.JpaUserDetailsService} 加载。
+ * {@link com.embabel.insurance.config.DataInitializer} 在启动时自动初始化测试用户。
  */
 @Configuration
 @EnableWebSecurity
@@ -94,71 +83,6 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public UserDetailsService userDetailsService() {
-        // 普通用户 — 可使用聊天和查看保单
-        UserDetails user = User.builder()
-            .username("user")
-            .password(passwordEncoder().encode("password"))
-            .roles("USER")
-            .authorities("underwriting:read", "chat:use", "policies:read")
-            .build();
-
-        // 核保员 — 可处理核保请求、人工审批 REFERRED 报价单
-        UserDetails underwriter = User.builder()
-            .username("underwriter")
-            .password(passwordEncoder().encode("underwriter"))
-            .roles("UNDERWRITER")
-            .authorities("underwriting:write", "underwriting:approve", "underwriting:read", "chat:use", "policies:read")
-            .build();
-
-        // 理赔员 — 可处理理赔请求、审核 INVESTIGATING 理赔单
-        UserDetails claimsHandler = User.builder()
-            .username("claims")
-            .password(passwordEncoder().encode("claims"))
-            .roles("CLAIMS")
-            .authorities("claims:write", "claims:read", "claims:review", "chat:use", "policies:read")
-            .build();
-
-        // 管理员 — 拥有全部权限
-        UserDetails admin = User.builder()
-            .username("admin")
-            .password(passwordEncoder().encode("admin"))
-            .roles("ADMIN")
-            .authorities("underwriting:write", "underwriting:approve", "underwriting:read",
-                        "claims:write", "claims:read", "claims:review",
-                        "policies:write", "policies:read",
-                        "chat:use", "chat:admin",
-                        "rag:admin")
-            .build();
-
-        // 低风险用户 — 核保自动通过
-        UserDetails lowRisk = User.builder()
-            .username("low-risk-user")
-            .password(passwordEncoder().encode("password"))
-            .roles("USER")
-            .authorities("underwriting:write", "underwriting:read", "policies:read", "chat:use")
-            .build();
-
-        // 中风险用户 — 核保转人工
-        UserDetails mediumRisk = User.builder()
-            .username("medium-risk-user")
-            .password(passwordEncoder().encode("password"))
-            .roles("USER")
-            .authorities("underwriting:write", "underwriting:read", "policies:read", "chat:use")
-            .build();
-
-        // 高风险用户 — 核保拒绝
-        UserDetails highRisk = User.builder()
-            .username("high-risk-user")
-            .password(passwordEncoder().encode("password"))
-            .roles("USER")
-            .authorities("underwriting:write", "underwriting:read", "policies:read", "chat:use")
-            .build();
-
-        return new InMemoryUserDetailsManager(lowRisk, mediumRisk, highRisk, user, underwriter, claimsHandler, admin);
     }
 
     @Bean
