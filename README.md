@@ -1,33 +1,30 @@
-# 智能保险平台 — Embabel Java Agent 教程项目
+# 智能保险平台
 
-![Java](https://img.shields.io/badge/java-%23ED8B00.svg?style=for-the-badge&logo=openjdk&logoColor=white)
-![Spring](https://img.shields.io/badge/spring-%236DB33F.svg?style=for-the-badge&logo=spring&logoColor=white)
-![Apache Maven](https://img.shields.io/badge/Apache%20Maven-C71A36?style=for-the-badge&logo=Apache%20Maven&logoColor=white)
-
-基于 [Embabel 框架](https://github.com/embabel/embabel-agent) 构建的智能保险平台，演示多 Agent 协作、LLM 驱动决策、RAG 知识检索和安全防护等核心能力。
+基于 [Embabel 框架](https://github.com/embabel/embabel-agent) 的多 Agent 智能保险平台，支持核保、理赔、AI 客服等核心业务流程，集成 RAG 知识库、混合搜索和完整可观测性。
 
 ## 功能特性
 
-- **核保 Agent（UnderwritingAgent）** — LLM 提取车辆信息 → 客户/车辆查找 → 风险评分 → 自动路由（批准/转人工/拒绝）
-- **理赔 Agent（ClaimsAgent）** — 保单校验 → LLM 事故提取 → 欺诈评分 → 自动路由（批准/拒绝/人工审核）
-- **AI 客服 Agent（ChatbotAgent）** — 基于 Lucene RAG 的保险知识问答，Agentic RAG（先搜后答）
-- **多 Agent 协作** — 核保 → 支付 → 理赔完整业务生命周期
-- **安全防护（Guardrails）** — Spring Security + Embabel Guardrails 输入校验
-- **缓存机制** — LLM 响应缓存 + RAG 搜索缓存
+- **🚗 核保 Agent** — LLM 提取车辆信息 → 风险评分 → 自动路由（批准 / 转人工 / 拒绝）
+- **📋 理赔 Agent** — 保单校验 → 欺诈评分 → 自动路由（批准 / 人工审核 / 拒绝）
+- **💬 AI 客服** — RAG 知识库问答，BM25 + 向量混合搜索
+- **🔀 意图路由** — 自然语言输入，自动识别并路由到对应业务模块
+- **🛡️ 安全防护** — Spring Security + Embabel Guardrails 输入校验
+- **📊 可观测性** — Prometheus + Grafana 指标监控
 
 ## 技术栈
 
 | 组件 | 技术 |
 |------|------|
-| 框架 | Spring Boot 3.4.0 |
-| Agent 框架 | Embabel 0.3.5 |
-| LLM 提供商 | DeepSeek（deepseek-chat / deepseek-reasoner） |
-| 数据库 | H2（内存模式，开箱即用） |
-| RAG 引擎 | Embabel Lucene（BM25 全文检索）+ Apache Tika（文档解析） |
-| 安全 | Spring Security + HTTP Basic 认证 + 角色层级权限 |
-| API 文档 | SpringDoc OpenAPI（Swagger UI） |
-| 可观测性 | Spring Boot Actuator + Micrometer Prometheus + OpenTelemetry Langfuse |
-| 测试 | Embabel FakeOperationContext（无 LLM 调用的集成测试） |
+| 框架 | Spring Boot 4.0.1 / Java 21 |
+| Agent 框架 | Embabel 2.0.0 (SNAPSHOT) |
+| LLM | DeepSeek (deepseek-chat) |
+| 数据库 | MySQL 8.x |
+| 全文检索 | Lucene BM25 |
+| 向量检索 | Qdrant + Ollama (nomic-embed-text) |
+| 混合搜索 | RRF 融合排序 |
+| 前端 | 静态 HTML (Spring Boot 内嵌) |
+| 安全 | Spring Security + HTTP Basic + 角色层级 |
+| 可观测性 | Prometheus + Grafana + Langfuse |
 
 ## 快速开始
 
@@ -37,26 +34,28 @@
 - Maven 3.8+
 - MySQL 8.0+（运行中）
 - DeepSeek API Key
+- Docker（Qdrant / Langfuse / Prometheus / Grafana）
 
-### 1. 数据库准备
+### 1. 环境变量
 
 ```bash
-# 确保 MySQL 已启动，创建数据库
-mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS embabel_insurance CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+# 必填
+export DEEPSEEK_API_KEY=your-deepseek-api-key
+
+# MySQL（可选，有默认值）
+export MYSQL_URL=jdbc:mysql://localhost:3306/embabel_insurance?createDatabaseIfNotExist=true
+export MYSQL_USER=root
+export MYSQL_PASSWORD=Embabel@2024!
 ```
 
-数据库连接通过环境变量配置（可选，有默认值）：
-
-| 变量 | 默认值 |
-|------|--------|
-| `MYSQL_URL` | `jdbc:mysql://localhost:3306/embabel_insurance?createDatabaseIfNotExist=true` |
-| `MYSQL_USER` | `root` |
-| `MYSQL_PASSWORD` | `Embabel@2024!` |
-
-### 2. 设置 API Key
+### 2. 启动依赖服务
 
 ```bash
-export DEEPSEEK_API_KEY=your-deepseek-api-key
+# 确保 MySQL 已启动并创建数据库
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS embabel_insurance CHARACTER SET utf8mb4"
+
+# 启动 Docker 服务（Qdrant + 可观测性）
+docker compose up -d
 ```
 
 ### 3. 启动应用
@@ -65,151 +64,136 @@ export DEEPSEEK_API_KEY=your-deepseek-api-key
 ./mvnw spring-boot:run
 ```
 
-应用默认在 `http://localhost:8080` 启动，使用 MySQL 数据库，启动时自动初始化测试数据。
+应用默认在 `http://localhost:8080` 启动，启动时自动初始化测试数据并摄入 RAG 文档。
 
-### 4. 体验 AI 助手（推荐）
+### 4. 体验
 
-应用启动后访问 **http://localhost:8080**，使用统一 Chat UI 直接对话。
-系统会自动识别你的意图并路由到对应的业务模块：
+打开 **http://localhost:8080** → 登录（user / password）→ 开始对话：
 
 ```
-# 核保：描述你的车辆和保险需求
-我要给京A12345的Toyota RAV4投保，userId=user
-
-# 理赔：提交理赔申请
-policy=POL-001 description=停车场被刮蹭 amount=5000 userId=user
-
-# 客服：询问保险知识
-什么是综合险？理赔流程是怎样的？
+🚗 我要给京A88888的RAV4投保              → 核保报价
+📋 policy=POL-001 description=刮蹭 amount=5000  → 理赔申请
+📄 我的保单                              → 保单查询
+💬 综合险是什么？                         → 客服问答
 ```
 
-### 5. REST API
+## 测试用户
 
-也可以通过 REST API 调用（需要 HTTP Basic 认证）：
+| 用户名 | 密码 | 说明 |
+|--------|------|------|
+| `user` | password | 普通用户，聊天+查看保单 |
+| `low-risk-user` | password | 核保自动通过 |
+| `medium-risk-user` | password | 核保转人工 |
+| `high-risk-user` | password | 核保拒绝 |
+| `underwriter` | underwriter | 核保员，可审批报价 |
+| `claims` | claims | 理赔员，可审核理赔 |
+| `admin` | admin | 管理员，全部权限 |
+
+## 架构
+
+```
+用户输入 (Chat UI / REST API)
+    ↓
+AssistantController (/api/assistant)
+    ↓
+IntentClassifier  ─→  CHAT       → HybridSearchService + ChatbotAgent
+                   │               (BM25 + Qdrant 混合搜索)
+                   ├→  UNDERWRITING → AgentService + UnderwritingAgent
+                   ├→  CLAIMS       → AgentService + ClaimsAgent
+                   ├→  POLICY_QUERY → PolicyService
+                   ├→  PAYMENT      → PaymentService
+                   └→  VIEW_DETAILS → QuoteRepository
+    ↓
+AssistantResponse (结构化 JSON)
+    ↓
+Chat UI (打字机渲染 + 操作按钮)
+```
+
+## API
+
+### 统一助手（推荐）
 
 ```bash
-# 核保请求
-curl -u user:password -X POST http://localhost:8080/api/insurance/underwrite \
+# 自然语言输入，自动路由
+curl -u user:password -X POST http://localhost:8080/api/assistant \
   -H "Content-Type: application/json" \
-  -d '{"content": "我要给京A12345的Toyota RAV4投保，userId=user"}'
-
-# 理赔请求
-curl -u user:password -X POST http://localhost:8080/api/insurance/claim \
-  -H "Content-Type: application/json" \
-  -d '{"content": "policy=POL-001 description=停车场被刮蹭 amount=5000 userId=user"}'
+  -d '{"message": "我要给京A88888的RAV4投保"}'
 ```
 
-Swagger UI：`http://localhost:8080/swagger-ui.html`（免认证访问）
+返回结构化响应：
 
-### 6. 测试用户
+```json
+{
+  "type": "underwriting_result",
+  "text": "✅ 核保通过，保费 ¥3,680...",
+  "data": { "quoteId": 1, "status": "APPROVED", "premiumAmount": 3680 },
+  "actions": [{ "label": "💳 立即支付", "action": "pay", "payload": { "quoteId": 1 } }]
+}
+```
 
-| 用户名 | 密码 | 角色 | 权限 |
-|--------|------|------|------|
-| `user` | `password` | USER | 聊天、查看保单 |
-| `underwriter` | `underwriter` | UNDERWRITER | 核保处理、审批报价 |
-| `claims` | `claims` | CLAIMS | 理赔处理、审核理赔单 |
-| `admin` | `admin` | ADMIN | 全部权限 |
+### 原始接口
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/assistant` | POST | 统一助手入口 |
+| `/api/chat` | POST | 客服问答 |
+| `/api/insurance/underwrite` | POST | 核保 |
+| `/api/insurance/claims` | POST | 理赔 |
+| `/api/insurance/policies` | GET | 保单列表 |
+| `/api/insurance/pay` | POST | 支付 |
+| `/api/insurance/health` | GET | 健康检查 |
+
+Swagger UI: `http://localhost:8080/swagger-ui.html`
+
+## 可观测性
+
+```
+应用 (:8080)
+  ├─ /actuator/prometheus ← Prometheus (:9090) ← Grafana (:4000)
+  └─ OTLP → Langfuse (:3000)
+```
+
+| 服务 | 地址 | 说明 |
+|------|------|------|
+| Grafana | http://localhost:4000 | admin/admin |
+| Prometheus | http://localhost:9090 | 指标存储 |
+| Langfuse | http://localhost:3000 | LLM 调用追踪 |
+
+## 测试
+
+```bash
+# 全部测试
+./mvnw test
+
+# 单个测试
+./mvnw test -Dtest=UnderwritingAgentIntegrationTest
+
+# E2E 测试（需 API Key）
+./mvnw test -Pe2e
+
+# 跳过集成测试（快速编译）
+./mvnw test -Dtest='!integration.*,!e2e.*'
+```
+
+集成测试使用 `FakeOperationContext` 模拟 LLM 响应，无需真实 API 调用。
 
 ## 项目结构
 
 ```
 src/main/java/com/embabel/insurance/
-├── agent/
-│   ├── UnderwritingAgent.java    # 核保 Agent（Utility 规划 + @State 分类）
-│   ├── ClaimsAgent.java          # 理赔 Agent（Utility 规划 + @State 分类）
-│   └── ChatbotAgent.java         # AI 客服 Agent（Agentic RAG）
-├── config/
-│   ├── CacheConfiguration.java   # 缓存配置
-│   ├── DataInitializer.java      # 测试数据初始化
-│   ├── DocumentIngestionRunner.java  # 启动时 RAG 文档摄入
-│   ├── GuardrailConfiguration.java   # Embabel Guardrails 配置
-│   ├── OpenApiConfig.java        # Swagger 配置
-│   ├── RagConfiguration.java     # Lucene RAG 引擎配置
-│   └── SecurityConfig.java       # Spring Security 配置
-├── controller/
-│   ├── ChatController.java       # 聊天 API
-│   ├── InsuranceController.java  # 核保/理赔 API
-│   └── RagAdminController.java   # RAG 管理 API
-├── dto/                          # 数据传输对象
-├── entity/                       # JPA 实体（Customer、Policy、Claim、Quote、Vehicle）
-├── guardrail/                    # Embabel Guardrail 实现
-├── repository/                   # Spring Data JPA 仓库
-├── service/
-│   ├── AgentService.java         # Agent 编排服务（核保/理赔/支付流程）
-│   ├── CacheService.java         # 缓存管理
-│   ├── ChatService.java          # 聊天编排服务
-│   ├── DataService.java          # 数据查询服务
-│   ├── LlmSelectionService.java  # LLM 模型选择（fast/balanced/powerful）
-│   ├── PaymentService.java       # 支付服务
-│   ├── PolicyService.java        # 保单查询服务
-│   ├── PremiumCalculationService.java  # 保费计算
-│   └── RiskCalculationService.java     # 风险评分
-└── EmbabelApplication.java       # Spring Boot 入口
-
-src/test/java/com/embabel/insurance/
-├── integration/                  # 集成测试（FakeOperationContext，无 LLM 调用）
-│   ├── UnderwritingAgentIntegrationTest.java
-│   ├── ClaimsAgentIntegrationTest.java
-│   ├── ChatbotAgentIntegrationTest.java
-│   └── MultiAgentE2EIntegrationTest.java
-└── e2e/                          # E2E 测试（需要真实 LLM）
-```
-
-## 可观测性（可选）
-
-项目内置了完整的可观测性支持，默认关闭以保持快速启动体验。
-
-### 快速开启 Prometheus + Actuator
-
-1. 编辑 `pom.xml`：取消 `spring-boot-starter-actuator` 和 `micrometer-registry-prometheus` 依赖的注释
-2. 编辑 `src/main/resources/application.yml`：
-   - 将 `embabel.observability.enabled` 改为 `true`
-   - 取消 `management` 段注释
-
-启动后即可访问：
-- `http://localhost:8080/actuator/health` — 健康检查
-- `http://localhost:8080/actuator/metrics` — 应用指标
-- `http://localhost:8080/actuator/prometheus` — Prometheus 格式指标
-
-### 开启 Langfuse（LLM 调用追踪）
-
-在 Prometheus 基础上：
-
-1. 编辑 `pom.xml`：取消 `opentelemetry-exporter-langfuse` 依赖的注释
-2. 设置 Langfuse 环境变量：
-
-```bash
-export LANGFUSE_PUBLIC_KEY=pk-xxx
-export LANGFUSE_SECRET_KEY=sk-xxx
-```
-
-启动本地 Langfuse（Docker）：
-
-```bash
-docker run -p 3000:3000 -e LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES=true langfuse/langfuse:latest
-```
-
-> 或使用 [Langfuse Cloud](https://cloud.langfuse.com/)，将 `management.langfuse.endpoint` 改为云版地址。
-
-## 测试
-
-### 运行全部测试
-
-```bash
-./mvnw test
-```
-
-### 集成测试（无需 API Key）
-
-集成测试使用 Embabel 的 `FakeOperationContext` 模拟 LLM 响应，无需真实 API 调用，覆盖完整的 Agent 工作流。
-
-### E2E 测试（需要 DeepSeek API Key）
-
-```bash
-export DEEPSEEK_API_KEY=your-key
-./mvnw test -Pe2e
+├── agent/         # 三个 @Agent（Underwriting / Claims / Chatbot）
+├── assistant/     # Phase 1：IntentClassifier + Intent 枚举
+├── config/        # Security、RAG、Guardrail、DataInitializer 等
+├── controller/    # REST 控制器
+├── dto/           # 请求/响应 DTO
+├── entity/        # JPA 实体
+├── guardrail/     # Embabel GuardRail 实现
+├── rag/           # EmbeddingService / QdrantSearch / HybridSearch
+├── repository/    # Spring Data JPA
+├── service/       # AgentService / ChatService / PaymentService 等
+└── util/
 ```
 
 ## 许可
 
-本项目基于 Apache 2.0 许可开源 - 详见 [LICENSE](LICENSE) 文件。
+Apache 2.0

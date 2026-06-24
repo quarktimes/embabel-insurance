@@ -23,15 +23,17 @@ public class EmbeddingService {
     private final String model;
 
     public EmbeddingService(
-            @Value("${insurance.rag.embedding.base-url:https://api.deepseek.com/v1}") String baseUrl,
-            @Value("${insurance.rag.embedding.api-key:${DEEPSEEK_API_KEY:}}") String apiKey,
-            @Value("${insurance.rag.embedding.model:text-embedding-3-small}") String model) {
+            @Value("${insurance.rag.embedding.base-url:http://localhost:11434/v1}") String baseUrl,
+            @Value("${insurance.rag.embedding.api-key:ollama}") String apiKey,
+            @Value("${insurance.rag.embedding.model:nomic-embed-text}") String model,
+            @Value("${insurance.rag.embedding.dimensions:768}") int dimensions) {
         this.model = model;
         this.restClient = RestClient.builder()
                 .baseUrl(baseUrl)
                 .defaultHeader("Authorization", "Bearer " + apiKey)
                 .defaultHeader("Content-Type", "application/json")
                 .build();
+        logger.info("Embedding: {} ({} dims) at {}", model, dimensions, baseUrl);
     }
 
     /**
@@ -69,8 +71,11 @@ public class EmbeddingService {
                     .toList();
 
         } catch (Exception e) {
-            logger.error("Embedding API call failed for {} texts (first: '{}')", texts.size(),
-                    texts.isEmpty() ? "" : truncate(texts.get(0), 40), e);
+            logger.warn("Embedding API call failed — vector search disabled for this batch. "
+                    + "Check model name (default: text-embedding-3-small) and API key. "
+                    + "DeepSeek users: verify embedding model availability. "
+                    + "{} texts affected (first: '{}'): {}",
+                    texts.size(), texts.isEmpty() ? "" : truncate(texts.get(0), 40), e.getMessage());
             return texts.stream().map(t -> List.<Float>of()).toList();
         }
     }

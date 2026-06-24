@@ -4,5 +4,5 @@ datasources:
   - name: Prometheus
     type: prometheus
     access: proxy
-    url: http://host.docker.internal:8080/actuator/prometheus
+    url: http://prometheus:9090
     isDefault: true

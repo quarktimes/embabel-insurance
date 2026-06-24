@@ -79,6 +79,14 @@ services:
       clickhouse:
         condition: service_healthy
 
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+
   grafana:
     image: grafana/grafana:latest
     ports:
@@ -86,9 +94,12 @@ services:
     volumes:
       - ./docker/grafana/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
       - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
 
 volumes:
   qdrant_data:
   postgres_data:
   clickhouse_data:
+  prometheus_data:
   grafana_data:

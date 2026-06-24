@@ -38,7 +38,7 @@ embabel:
   # 开启方式：将 enabled 改为 true，取消 management 段注释
   # ============================================================
   observability:
-    enabled: false   # 使用 management.actuator + prometheus 替代，避免与 MySQL OTEL 冲突
+    enabled: false   # 在 main() 中手动初始化 OTEL，避免与 MySQL JDBC 9.x 冲突
     service-name: SmartInsurancePlatform
 
 insurance:
@@ -54,13 +54,13 @@ insurance:
       host: ${QDRANT_HOST:localhost}
       rest-port: ${QDRANT_REST_PORT:6333}
       collection-name: insurance_docs
-      vector-size: 1536
+      vector-size: 768
     embedding:
       enabled: true
-      model: text-embedding-3-small
-      base-url: https://api.deepseek.com/v1
-      api-key: ${DEEPSEEK_API_KEY}
-      dimensions: 1536
+      model: nomic-embed-text
+      base-url: http://localhost:11434/v1
+      api-key: ollama
+      dimensions: 768
     hybrid:
       rrf-k: 60
 server:
